@@ -45,6 +45,5 @@ namespace lio
             return Eigen::Matrix3d::Identity() + 0.5 * skew_vec;
         return Eigen::Matrix3d::Identity() + 0.5 * skew_vec + (1 / (norm * norm) + (1 + std::cos(norm)) / (2 * norm * std::sin(norm))) * skew_vec * skew_vec;
     }
-
     
 }

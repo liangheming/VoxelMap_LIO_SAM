@@ -11,6 +11,8 @@ struct RosParams
     std::string imu_topic;
     std::string lidar_topic;
     double lio_hz = 50;
+    int filter_num = 3;
+    double blind = 0.5;
 };
 
 struct NodeState
@@ -21,6 +23,10 @@ struct NodeState
     std::mutex imu_mutex;
     std::deque<lio::IMUData> imu_buffer;
     std::deque<std::pair<double, pcl::PointCloud<pcl::PointXYZINormal>::Ptr>> lidar_buffer;
+    std::pair<pcl::PointCloud<pcl::PointXYZINormal>::Ptr, std::vector<lio::IMUData>> package;
+    bool lidar_packed = false;
+    double package_begin_time = 0.0;
+    double package_end_time = 0.0;
 };
 
 class LioMappingNode
@@ -38,6 +44,10 @@ public:
         nh_.param<std::string>("lidar_topic", params_.lidar_topic, "/livox/lidar");
         nh_.param<std::string>("imu_topic", params_.imu_topic, "/livox/imu");
         nh_.param<double>("lio_hz", params_.lio_hz, 50);
+        nh_.param<int>("filter_num", params_.filter_num, 3);
+        nh_.param<double>("blind", params_.blind, 0.5);
+
+        state_.package.second.reserve(200);
     }
 
     void initSubScribers()
@@ -76,9 +86,39 @@ public:
                                        timestamp);
     }
 
+    bool syncPackage()
+    {
+        if (state_.imu_buffer.empty() || state_.lidar_buffer.empty())
+            return false;
+        if (!state_.lidar_packed)
+        {
+            state_.package.first = state_.lidar_buffer.front().second;
+            state_.package_begin_time = state_.lidar_buffer.front().first;
+            state_.package_end_time = state_.package_begin_time + state_.lidar_buffer.front().second->points.back().curvature / 1000.0;
+            state_.lidar_packed = true;
+        }
+        // 等待IMU的数据
+        if (state_.last_imu_time < state_.package_end_time)
+            return false;
+
+        state_.package.second.clear();
+
+        while (!state_.imu_buffer.empty() && (state_.imu_buffer.front().sec < state_.package_end_time))
+        {
+            state_.package.second.push_back(state_.imu_buffer.front());
+            state_.imu_buffer.pop_front();
+        }
+
+        state_.lidar_buffer.pop_front();
+        state_.lidar_packed = false;
+
+        return true;
+    }
     void mainCB(const ros::TimerEvent &time_event)
     {
-        ROS_INFO("%ld, %ld", state_.lidar_buffer.size(), state_.imu_buffer.size());
+        if (!syncPackage())
+            return;
+        
     }
 
 private:
