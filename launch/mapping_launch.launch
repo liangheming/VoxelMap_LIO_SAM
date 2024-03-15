@@ -1,0 +1,4 @@
+<launch>
+
+    <node pkg="voxel_lio_sam" type="mapping_node" name="mapping_node" output="screen"></node>
+</launch>
