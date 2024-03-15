@@ -7,7 +7,9 @@ add_compile_options(-std=c++17)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  sensor_msgs
   pcl_ros
+  livox_ros_driver2
 )
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
@@ -51,11 +53,9 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIR}
+  ${EIGEN3_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
 )
-
-
 
 
 
