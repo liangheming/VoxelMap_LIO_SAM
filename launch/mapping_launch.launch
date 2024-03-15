@@ -1,4 +1,5 @@
 <launch>
-
-    <node pkg="voxel_lio_sam" type="mapping_node" name="mapping_node" output="screen"></node>
+    <node pkg="voxel_lio_sam" type="mapping_node" name="mapping_node" output="screen">
+        <rosparam command="load" file="$(find voxel_lio_sam)/config/mapping.yaml" />
+    </node>
 </launch>

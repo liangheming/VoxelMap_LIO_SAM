@@ -57,9 +57,11 @@ include_directories(
   ${PCL_INCLUDE_DIRS}
 )
 
+set(SRC_LIST src/utils.cpp
+             src/map_builder/commons.cpp
+             src/map_builder/ieskf.cpp)
 
-
-add_executable(mapping_node src/mapping_node.cpp)
+add_executable(mapping_node src/mapping_node.cpp ${SRC_LIST})
 
 target_link_libraries(mapping_node
   ${catkin_LIBRARIES}
