@@ -18,6 +18,7 @@ namespace lio
         Eigen::Vector3d acc;
         Eigen::Vector3d gyro;
         double sec;
-        IMUData(const Eigen::Vector3d &a,const Eigen::Vector3d &g, double &d) : acc(a), gyro(g), sec(d) {}
+        IMUData() = default;
+        IMUData(const Eigen::Vector3d &a, const Eigen::Vector3d &g, double &d) : acc(a), gyro(g), sec(d) {}
     };
 }

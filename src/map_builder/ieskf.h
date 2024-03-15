@@ -76,6 +76,12 @@ namespace lio
 
         IESKF(size_t max_iter) : max_iter_(max_iter) {}
 
+        void setMaxIter(int max_iter)
+        {
+            assert(max_iter > 0);
+            max_iter_ = max_iter;
+        }
+
         State &x() { return x_; }
 
         Matrix23d &P() { return P_; }
@@ -96,5 +102,7 @@ namespace lio
         Vector23d b_;
         Matrix23d F_;
         Matrix23x12d G_;
+
+        
     };
 }
