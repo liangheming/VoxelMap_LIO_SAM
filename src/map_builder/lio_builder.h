@@ -24,6 +24,8 @@ namespace lio
         int init_imu_num = 20;
         Eigen::Matrix3d imu_ext_rot = Eigen::Matrix3d::Identity();
         Eigen::Vector3d imu_ext_pos = Eigen::Vector3d::Zero();
+        double scan_resolution = 0.5;
+        double map_resolution = 0.5;
     };
     class LioBuidler
     {
