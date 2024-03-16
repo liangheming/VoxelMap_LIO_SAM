@@ -1,5 +1,4 @@
 #include "ieskf.h"
-
 namespace lio
 {
     void State::operator+=(const Vector23d &delta)
@@ -100,15 +99,15 @@ namespace lio
         delta.segment<3>(12) = (x_.rot * (inp.acc - x_.ba) + x_.g) * dt;
         F_.setIdentity();
         F_.block<3, 3>(0, 12) = Eigen::Matrix3d::Identity() * dt;
-        F_.block<3, 3>(3, 3) = Exp(-(inp.gyro - x_.bg) * dt);
-        F_.block<3, 3>(3, 15) = -Jr((inp.gyro - x_.bg) * dt) * dt;
-        F_.block<3, 3>(12, 3) = -x_.rot * skew(inp.acc - x_.ba) * dt;
+        F_.block<3, 3>(3, 3) = Sophus::SO3d::exp(-(inp.gyro - x_.bg) * dt).matrix();
+        F_.block<3, 3>(3, 15) = -Sophus::SO3d::leftJacobian((inp.gyro - x_.bg) * dt).transpose() * dt;
+        F_.block<3, 3>(12, 3) = -x_.rot * Sophus::SO3d::hat(inp.acc - x_.ba) * dt;
         F_.block<3, 3>(12, 18) = -x_.rot * dt;
         F_.block<3, 2>(12, 21) = x_.getMx() * dt;
         F_.block<2, 2>(21, 21) = x_.getNx() * x_.getMx();
 
         G_.setZero();
-        G_.block<3, 3>(3, 0) = -Jr((inp.gyro - x_.bg) * dt) * dt;
+        G_.block<3, 3>(3, 0) = -Sophus::SO3d::leftJacobian((inp.gyro - x_.bg) * dt).transpose() * dt;
         G_.block<3, 3>(12, 3) = -x_.rot * dt;
         G_.block<3, 3>(15, 6) = Eigen::Matrix3d::Identity() * dt;
         G_.block<3, 3>(18, 9) = Eigen::Matrix3d::Identity() * dt;

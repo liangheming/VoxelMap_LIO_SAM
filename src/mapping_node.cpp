@@ -135,7 +135,7 @@ private:
     RosParams params_;
     NodeState state_;
 
-    lio::LioBuidler map_builder_;
+    lio::LioBuilder map_builder_;
 };
 
 int main(int argc, char **argv)

@@ -1,5 +1,6 @@
 #pragma once
 #include "commons.h"
+#include <sophus/so3.hpp>
 
 namespace lio
 {
