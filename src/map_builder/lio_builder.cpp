@@ -105,9 +105,7 @@ namespace lio
             if (tail.sec < last_lidar_end_time_)
                 continue;
             gyro_val = 0.5 * (head.gyro + tail.gyro);
-
             acc_val = 0.5 * (head.acc + head.acc);
-
             acc_val = acc_val * 9.81 / init_gravity_norm_;
 
             if (head.sec < last_lidar_end_time_)
@@ -116,15 +114,10 @@ namespace lio
                 dt = tail.sec - head.sec;
 
             inp.acc = acc_val;
-
             inp.gyro = gyro_val;
-
             kf_.predict(inp, dt, Q_);
-
             last_gyro_ = gyro_val - kf_.x().bg;
-
             last_acc_ = kf_.x().rot * (acc_val - kf_.x().ba) + kf_.x().g;
-
             imu_poses_.emplace_back(tail.sec - lidar_time_begin, last_acc_, last_gyro_, kf_.x().vel, kf_.x().pos, kf_.x().rot);
         }
 
@@ -139,7 +132,6 @@ namespace lio
         Eigen::Vector3d cur_pos = kf_.x().pos;
         Eigen::Matrix3d cur_rot_ext = kf_.x().rot_ext;
         Eigen::Vector3d cur_pos_ext = kf_.x().pos_ext;
-
         auto it_pcl = cloud->points.end() - 1;
         for (auto it_kp = imu_poses_.end() - 1; it_kp != imu_poses_.begin(); it_kp--)
         {
@@ -156,7 +148,6 @@ namespace lio
                 Eigen::Vector3d point(it_pcl->x, it_pcl->y, it_pcl->z);
                 Eigen::Matrix3d point_rot = imu_rot * Exp(imu_gyro * dt);
                 Eigen::Vector3d point_pos = imu_pos + imu_vel * dt + 0.5 * imu_acc * dt * dt;
-                // r_e^T *(r_l^T * (r_c*(r_e * p + t_e)+t_c -t_l) - t_e);
                 Eigen::Vector3d p = cur_rot_ext.transpose() * (cur_rot.transpose() * (point_rot * (cur_rot_ext * point + cur_pos_ext) + point_pos - cur_pos) - cur_pos_ext);
                 it_pcl->x = p(0);
                 it_pcl->y = p(1);
