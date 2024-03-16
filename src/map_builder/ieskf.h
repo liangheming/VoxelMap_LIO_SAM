@@ -72,6 +72,7 @@ namespace lio
     class IESKF
     {
     public:
+        static int I_P, I_R, I_ER, I_EP, I_V, I_BG, I_BA, I_G;
         IESKF();
 
         IESKF(size_t max_iter) : max_iter_(max_iter) {}
@@ -102,7 +103,5 @@ namespace lio
         Vector23d b_;
         Matrix23d F_;
         Matrix23x12d G_;
-
-        
     };
 }

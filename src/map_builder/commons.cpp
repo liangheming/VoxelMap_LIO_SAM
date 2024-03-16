@@ -46,4 +46,11 @@ namespace lio
         return Eigen::Matrix3d::Identity() + 0.5 * skew_vec + (1 / (norm * norm) + (1 + std::cos(norm)) / (2 * norm * std::sin(norm))) * skew_vec * skew_vec;
     }
     
+    Eigen::Vector3d rotate2rpy(Eigen::Matrix3d &rot)
+    {
+        double roll = std::atan2(rot(2, 1), rot(2, 2));
+        double pitch = asin(-rot(2, 0));
+        double yaw = std::atan2(rot(1, 0), rot(0, 0));
+        return Eigen::Vector3d(roll, pitch, yaw);
+    }
 }

@@ -5,6 +5,7 @@
 #include "utils.h"
 #include <sensor_msgs/Imu.h>
 #include "map_builder/commons.h"
+#include "map_builder/lio_builder.h"
 
 struct RosParams
 {
@@ -118,8 +119,12 @@ public:
     {
         if (!syncPackage())
             return;
-        
-        
+        for (auto &imu_data : state_.package.second)
+        {
+            map_builder_.processIMU(imu_data);
+        }
+        map_builder_.processLidar(state_.package.first, state_.package_begin_time);
+        std::cout << "current_pos: " << map_builder_.currentState().pos.transpose() << std::endl;
     }
 
 private:
@@ -129,6 +134,8 @@ private:
     ros::Timer main_timer_;
     RosParams params_;
     NodeState state_;
+
+    lio::LioBuidler map_builder_;
 };
 
 int main(int argc, char **argv)

@@ -88,6 +88,8 @@ namespace lio
         return 1 / GRAVITY / GRAVITY * getBx().transpose() * skew(g);
     }
 
+    int IESKF::I_P = 0, IESKF::I_R = 3, IESKF::I_ER = 6, IESKF::I_EP = 9, IESKF::I_V = 12, IESKF::I_BG = 15, IESKF::I_BA = 18, IESKF::I_G = 21;
+
     IESKF::IESKF() = default;
 
     void IESKF::predict(const Input &inp, double dt, const Matrix12d &Q)
