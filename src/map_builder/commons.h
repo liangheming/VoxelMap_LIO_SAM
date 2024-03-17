@@ -18,6 +18,7 @@ namespace lio
         IMUData() = default;
         IMUData(const Eigen::Vector3d &a, const Eigen::Vector3d &g, double &d) : acc(a), gyro(g), timestamp(d) {}
     };
+    
     struct SyncPackage
     {
         std::vector<lio::IMUData> imus;
@@ -25,6 +26,7 @@ namespace lio
         double cloud_start_time = 0.0;
         double cloud_end_time = 0.0;
     };
+
     struct Pose
     {
     public:

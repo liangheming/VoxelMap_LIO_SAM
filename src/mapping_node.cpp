@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "map_builder/commons.h"
 #include "map_builder/lio_builder.h"
+#include <pcl/common/transforms.h>
 
 struct NodeParams
 {
@@ -19,7 +20,7 @@ struct NodeParams
     double blind_range = 0.5;
 };
 
-struct NodeState
+struct NodeGroupData
 {
     double last_imu_time = 0.0;
     double last_lidar_time = 0.0;
@@ -48,9 +49,25 @@ public:
         nh_.param<double>("lio_expect_hz", params_.lio_expect_hz, 50);
         nh_.param<int>("filter_num", params_.filter_num, 3);
         nh_.param<double>("blind_range", params_.blind_range, 0.5);
-
         lio::LIOParams lio_params;
+        nh_.param<double>("scan_resolution", lio_params.scan_resolution, 0.2);
+        nh_.param<double>("map_resolution", lio_params.map_resolution, 0.5);
+        nh_.param<bool>("gravity_align", lio_params.gravity_align, true);
+        nh_.param<int>("imu_init_num", lio_params.imu_init_num, 20);
+        nh_.param<double>("na", lio_params.na, 0.01);
+        nh_.param<double>("ng", lio_params.ng, 0.01);
+        nh_.param<double>("nbg", lio_params.nbg, 0.0001);
+        nh_.param<double>("nba", lio_params.nba, 0.0001);
+        nh_.param<int>("opti_max_iter", lio_params.opti_max_iter, 5);
+        std::vector<double> r_il, p_il;
+        nh_.param<std::vector<double>>("r_il", r_il, std::vector<double>{1, 0, 0, 0, 1, 0, 0, 0, 1});
+        assert(r_il.size() == 9);
+        lio_params.r_il << r_il[0], r_il[1], r_il[2], r_il[3], r_il[4], r_il[5], r_il[6], r_il[7], r_il[8];
+        nh_.param<std::vector<double>>("p_il", p_il, std::vector<double>{0, 0, 0});
+        assert(p_il.size() == 3);
+        lio_params.p_il << p_il[0], p_il[1], p_il[2];
         map_builder_.initialize(lio_params);
+        
     }
 
     void initSubScribers()
@@ -68,32 +85,32 @@ public:
 
     void imuCB(const sensor_msgs::Imu::ConstPtr msg)
     {
-        std::lock_guard<std::mutex> lock(state_.imu_mutex);
+        std::lock_guard<std::mutex> lock(group_data_.imu_mutex);
         double timestamp = msg->header.stamp.toSec();
-        if (timestamp < state_.last_imu_time)
+        if (timestamp < group_data_.last_imu_time)
         {
             ROS_WARN("IMU TIME SYNC ERROR");
-            state_.imu_buffer.clear();
+            group_data_.imu_buffer.clear();
         }
-        state_.last_imu_time = timestamp;
-        state_.imu_buffer.emplace_back(Eigen::Vector3d(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z),
-                                       Eigen::Vector3d(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z),
-                                       timestamp);
+        group_data_.last_imu_time = timestamp;
+        group_data_.imu_buffer.emplace_back(Eigen::Vector3d(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z),
+                                            Eigen::Vector3d(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z),
+                                            timestamp);
     }
 
     void lidarCB(const livox_ros_driver2::CustomMsg::ConstPtr msg)
     {
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
         livox2pcl(msg, cloud, params_.filter_num, params_.blind_range);
-        std::lock_guard<std::mutex> lock(state_.lidar_mutex);
+        std::lock_guard<std::mutex> lock(group_data_.lidar_mutex);
         double timestamp = msg->header.stamp.toSec();
-        if (timestamp < state_.last_lidar_time)
+        if (timestamp < group_data_.last_lidar_time)
         {
             ROS_WARN("LIDAR TIME SYNC ERROR");
-            state_.lidar_buffer.clear();
+            group_data_.lidar_buffer.clear();
         }
-        state_.last_lidar_time = timestamp;
-        state_.lidar_buffer.emplace_back(timestamp, cloud);
+        group_data_.last_lidar_time = timestamp;
+        group_data_.lidar_buffer.emplace_back(timestamp, cloud);
     }
 
     void publishBodyCloud(const double &time)
@@ -101,18 +118,10 @@ public:
         if (body_cloud_pub_.getNumSubscribers() == 0)
             return;
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr body_cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
-        body_cloud->resize(sync_pack_.cloud->size());
-
-        for (int i = 0; i < sync_pack_.cloud->size(); i++)
-        {
-            pcl::PointXYZINormal &p = sync_pack_.cloud->points[i];
-            Eigen::Vector3d p_b(p.x, p.y, p.z);
-            Eigen::Vector3d p_w = current_state_.rot_ext * p_b + current_state_.pos_ext;
-            body_cloud->points[i].x = p_w(0);
-            body_cloud->points[i].y = p_w(1);
-            body_cloud->points[i].z = p_w(2);
-            body_cloud->points[i].intensity = p.intensity;
-        }
+        Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+        transform.block<3, 3>(0, 0) = current_state_.rot_ext.cast<float>();
+        transform.block<3, 1>(0, 3) = current_state_.pos_ext.cast<float>();
+        pcl::transformPointCloud(*sync_pack_.cloud, *body_cloud, transform);
         body_cloud_pub_.publish(pcl2msg(body_cloud, "body", time));
     }
 
@@ -121,17 +130,10 @@ public:
         if (world_cloud_pub_.getNumSubscribers() == 0)
             return;
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr world_cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
-        world_cloud->resize(sync_pack_.cloud->size());
-        for (int i = 0; i < sync_pack_.cloud->size(); i++)
-        {
-            pcl::PointXYZINormal &p = sync_pack_.cloud->points[i];
-            Eigen::Vector3d p_b(p.x, p.y, p.z);
-            Eigen::Vector3d p_w = current_state_.rot * (current_state_.rot_ext * p_b + current_state_.pos_ext) + current_state_.pos;
-            world_cloud->points[i].x = p_w(0);
-            world_cloud->points[i].y = p_w(1);
-            world_cloud->points[i].z = p_w(2);
-            world_cloud->points[i].intensity = p.intensity;
-        }
+        Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+        transform.block<3, 3>(0, 0) = (current_state_.rot * current_state_.rot_ext).cast<float>();
+        transform.block<3, 1>(0, 3) = (current_state_.rot * current_state_.pos_ext + current_state_.pos).cast<float>();
+        pcl::transformPointCloud(*sync_pack_.cloud, *world_cloud, transform);
         world_cloud_pub_.publish(pcl2msg(world_cloud, "map", time));
     }
 
@@ -144,31 +146,31 @@ public:
 
     bool syncPackage()
     {
-        if (state_.imu_buffer.empty() || state_.lidar_buffer.empty())
+        if (group_data_.imu_buffer.empty() || group_data_.lidar_buffer.empty())
             return false;
         // 同步点云数据
-        if (!state_.lidar_pushed)
+        if (!group_data_.lidar_pushed)
         {
-            sync_pack_.cloud = state_.lidar_buffer.front().second;
-            sync_pack_.cloud_start_time = state_.lidar_buffer.front().first;
+            sync_pack_.cloud = group_data_.lidar_buffer.front().second;
+            sync_pack_.cloud_start_time = group_data_.lidar_buffer.front().first;
             sync_pack_.cloud_end_time = sync_pack_.cloud_start_time + sync_pack_.cloud->points.back().curvature / double(1000.0);
-            state_.lidar_pushed = true;
+            group_data_.lidar_pushed = true;
         }
         // 等待IMU的数据
-        if (state_.last_imu_time < sync_pack_.cloud_end_time)
+        if (group_data_.last_imu_time < sync_pack_.cloud_end_time)
             return false;
 
         sync_pack_.imus.clear();
 
         // 同步IMU的数据
         // IMU的最后一帧数据的时间小于点云最后一个点的时间
-        while (!state_.imu_buffer.empty() && (state_.imu_buffer.front().timestamp < sync_pack_.cloud_end_time))
+        while (!group_data_.imu_buffer.empty() && (group_data_.imu_buffer.front().timestamp < sync_pack_.cloud_end_time))
         {
-            sync_pack_.imus.push_back(state_.imu_buffer.front());
-            state_.imu_buffer.pop_front();
+            sync_pack_.imus.push_back(group_data_.imu_buffer.front());
+            group_data_.imu_buffer.pop_front();
         }
-        state_.lidar_buffer.pop_front();
-        state_.lidar_pushed = false;
+        group_data_.lidar_buffer.pop_front();
+        group_data_.lidar_pushed = false;
         return true;
     }
 
@@ -204,7 +206,7 @@ private:
 
     ros::Timer main_timer_;
     NodeParams params_;
-    NodeState state_;
+    NodeGroupData group_data_;
     lio::SyncPackage sync_pack_;
     lio::LioBuilder map_builder_;
     kf::State current_state_;

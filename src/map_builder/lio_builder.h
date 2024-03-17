@@ -7,6 +7,7 @@
 
 #include "ikd_Tree.h"
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/common/transforms.h>
 
 namespace lio
 {
@@ -26,7 +27,7 @@ namespace lio
         bool gravity_align = true;
         int imu_init_num = 20;
         Eigen::Matrix3d r_il = Eigen::Matrix3d::Identity();
-        Eigen::Vector3d p_il = Eigen::Vector3d(-0.011, -0.02329, 0.04412);
+        Eigen::Vector3d p_il = Eigen::Vector3d::Zero();
         double scan_resolution = 0.25;
         double map_resolution = 0.25;
     };

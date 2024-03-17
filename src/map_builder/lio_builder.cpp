@@ -2,7 +2,7 @@
 
 namespace lio
 {
-    
+
     void LioBuilder::initialize(LIOParams &params)
     {
         params_ = params;
@@ -34,17 +34,16 @@ namespace lio
         else if (status_ == LIOStatus::MAP_INIT)
         {
             undistortCloud(package);
-            scan_filter_.setInputCloud(package.cloud);
-            scan_filter_.filter(*fastlio_data_.cloud_down_lidar);
-            pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = transformToWorld(fastlio_data_.cloud_down_lidar);
+            pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = transformToWorld(package.cloud);
             fastlio_data_.ikdtree->Build(point_world->points);
             status_ = LIOStatus::LIO_MAPPING;
         }
         else
         {
-            undistortCloud(package);
             scan_filter_.setInputCloud(package.cloud);
-            scan_filter_.filter(*fastlio_data_.cloud_down_lidar);
+            scan_filter_.filter(*package.cloud);
+            undistortCloud(package);
+            fastlio_data_.cloud_down_lidar = package.cloud;
             fastlio_data_.trimMap(kf_.x());
             kf_.update();
             fastlio_data_.increaseMap(kf_.x());
@@ -93,7 +92,7 @@ namespace lio
         data_group_.imu_cache.clear();
         data_group_.imu_cache.push_back(data_group_.last_imu);
         data_group_.imu_cache.insert(data_group_.imu_cache.end(), package.imus.begin(), package.imus.end());
-                
+
         const double imu_time_begin = data_group_.imu_cache.front().timestamp;
         const double imu_time_end = data_group_.imu_cache.back().timestamp;
         const double cloud_time_begin = package.cloud_start_time;
@@ -104,7 +103,7 @@ namespace lio
 
         data_group_.imu_poses_cache.clear();
         data_group_.imu_poses_cache.emplace_back(0.0, data_group_.last_acc, data_group_.last_gyro,
-                                                  kf_.x().vel, kf_.x().pos, kf_.x().rot);
+                                                 kf_.x().vel, kf_.x().pos, kf_.x().rot);
 
         Eigen::Vector3d acc_val, gyro_val;
         double dt = 0.0;
@@ -137,7 +136,7 @@ namespace lio
 
             double offset = tail.timestamp - cloud_time_begin;
             data_group_.imu_poses_cache.emplace_back(offset, data_group_.last_acc, data_group_.last_gyro,
-                                                      kf_.x().vel, kf_.x().pos, kf_.x().rot);
+                                                     kf_.x().vel, kf_.x().pos, kf_.x().rot);
         }
 
         dt = cloud_time_end - imu_time_end;
@@ -184,22 +183,10 @@ namespace lio
     pcl::PointCloud<pcl::PointXYZINormal>::Ptr LioBuilder::transformToWorld(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud)
     {
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud_world(new pcl::PointCloud<pcl::PointXYZINormal>);
-        Eigen::Matrix3d rot = kf_.x().rot;
-        Eigen::Vector3d pos = kf_.x().pos;
-        Eigen::Matrix3d rot_ext = kf_.x().rot_ext;
-        Eigen::Vector3d pos_ext = kf_.x().pos_ext;
-        cloud_world->reserve(cloud->size());
-        for (auto &p : cloud->points)
-        {
-            Eigen::Vector3d point(p.x, p.y, p.z);
-            point = rot * (rot_ext * point + pos_ext) + pos;
-            pcl::PointXYZINormal p_world;
-            p_world.x = point(0);
-            p_world.y = point(1);
-            p_world.z = point(2);
-            p_world.intensity = p.intensity;
-            cloud_world->points.push_back(p_world);
-        }
+        Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+        transform.block<3, 3>(0, 0) = (kf_.x().rot * kf_.x().rot_ext).cast<float>();
+        transform.block<3, 1>(0, 3) = (kf_.x().rot * kf_.x().pos_ext + kf_.x().pos).cast<float>();
+        pcl::transformPointCloud(*cloud, *cloud_world, transform);
         return cloud_world;
     }
 
