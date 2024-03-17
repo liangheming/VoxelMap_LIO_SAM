@@ -1,6 +1,7 @@
 #include "commons.h"
 namespace lio
 {
+    /**
     Eigen::Matrix3d skew(const Eigen::Vector3d &vec)
     {
         Eigen::Matrix3d ret;
@@ -36,6 +37,7 @@ namespace lio
             return Eigen::Matrix3d::Identity() + 0.5 * skew_vec;
         return Eigen::Matrix3d::Identity() - (1 - std::cos(norm)) / (norm * norm) * skew_vec + (norm - std::sin(norm)) / (norm * norm * norm) * skew_vec * skew_vec;
     }
+    */
 
     Eigen::Vector3d rotate2rpy(Eigen::Matrix3d &rot)
     {
@@ -49,5 +51,5 @@ namespace lio
     {
         return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) + (p1.z - p2.z) * (p1.z - p2.z);
     }
-    
+
 }

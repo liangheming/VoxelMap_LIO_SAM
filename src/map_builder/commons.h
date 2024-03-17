@@ -5,6 +5,8 @@
 
 namespace lio
 {
+    /**
+
     Eigen::Matrix3d skew(const Eigen::Vector3d &vec);
 
     Eigen::Matrix3d Exp(const Eigen::Vector3d &vec);
@@ -13,8 +15,10 @@ namespace lio
 
     Eigen::Matrix3d Jr(const Eigen::Vector3d &vec);
 
+    */
+
     Eigen::Vector3d rotate2rpy(Eigen::Matrix3d &rot);
-    
+
     float sq_dist(const pcl::PointXYZINormal &p1, const pcl::PointXYZINormal &p2);
 
     struct IMUData
