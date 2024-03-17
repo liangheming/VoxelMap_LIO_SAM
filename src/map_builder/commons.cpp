@@ -14,7 +14,7 @@ namespace lio
     {
         double norm = vec.norm();
         Eigen::Matrix3d skew_vec = skew(vec);
-        if (norm < 1e-4)
+        if (norm < 1e-6)
             return Eigen::Matrix3d::Identity() + skew_vec;
         return Eigen::Matrix3d::Identity() + std::sin(norm) / norm * skew_vec + (1 - std::cos(norm)) / (norm * norm) * skew_vec * skew_vec;
     }
@@ -37,15 +37,6 @@ namespace lio
         return Eigen::Matrix3d::Identity() - (1 - std::cos(norm)) / (norm * norm) * skew_vec + (norm - std::sin(norm)) / (norm * norm * norm) * skew_vec * skew_vec;
     }
 
-    Eigen::Matrix3d Jr_inv(const Eigen::Vector3d &vec)
-    {
-        double norm = vec.norm();
-        Eigen::Matrix3d skew_vec = skew(vec);
-        if (norm < 1e-4)
-            return Eigen::Matrix3d::Identity() + 0.5 * skew_vec;
-        return Eigen::Matrix3d::Identity() + 0.5 * skew_vec + (1 / (norm * norm) + (1 + std::cos(norm)) / (2 * norm * std::sin(norm))) * skew_vec * skew_vec;
-    }
-    
     Eigen::Vector3d rotate2rpy(Eigen::Matrix3d &rot)
     {
         double roll = std::atan2(rot(2, 1), rot(2, 2));
@@ -53,4 +44,10 @@ namespace lio
         double yaw = std::atan2(rot(1, 0), rot(0, 0));
         return Eigen::Vector3d(roll, pitch, yaw);
     }
+
+    float sq_dist(const pcl::PointXYZINormal &p1, const pcl::PointXYZINormal &p2)
+    {
+        return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) + (p1.z - p2.z) * (p1.z - p2.z);
+    }
+    
 }

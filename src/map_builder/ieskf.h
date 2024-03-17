@@ -1,11 +1,9 @@
 #pragma once
-#include "commons.h"
+#include <Eigen/Core>
 #include <sophus/so3.hpp>
-
-namespace lio
+namespace kf
 {
     const double GRAVITY = 9.81;
-
     using Vector21d = Eigen::Matrix<double, 21, 1>;
     using Vector12d = Eigen::Matrix<double, 12, 1>;
     using Matrix21d = Eigen::Matrix<double, 21, 21>;
@@ -19,6 +17,8 @@ namespace lio
     using Matrix3x2d = Eigen::Matrix<double, 3, 2>;
     using Matrix2x3d = Eigen::Matrix<double, 2, 3>;
 
+    Eigen::Matrix3d rightJacobian(const Eigen::Vector3d &inp);
+
     struct SharedState
     {
     public:
@@ -27,6 +27,7 @@ namespace lio
         Vector12d b;
         size_t iter_num = 0;
     };
+
     struct State
     {
     public:
@@ -39,10 +40,12 @@ namespace lio
         Eigen::Vector3d bg = Eigen::Vector3d::Zero();
         Eigen::Vector3d ba = Eigen::Vector3d::Zero();
         Eigen::Vector3d g = Eigen::Vector3d(0.0, 0.0, -GRAVITY);
+
         void initG(const Eigen::Vector3d &gravity_dir)
         {
             g = gravity_dir.normalized() * GRAVITY;
         }
+
         void operator+=(const Vector23d &delta);
 
         void operator+=(const Vector24d &delta);
@@ -57,7 +60,6 @@ namespace lio
 
         Matrix2x3d getNx() const;
     };
-
     struct Input
     {
     public:
@@ -66,6 +68,7 @@ namespace lio
         Eigen::Vector3d gyro;
         Input() = default;
         Input(Eigen::Vector3d &a, Eigen::Vector3d &g) : acc(a), gyro(g) {}
+        Input(double a1, double a2, double a3, double g1, double g2, double g3) : acc(a1, a2, a3), gyro(g1, g2, g3) {}
     };
 
     using measure_func = std::function<void(State &, SharedState &)>;
@@ -73,22 +76,21 @@ namespace lio
     class IESKF
     {
     public:
-        static int I_P, I_R, I_ER, I_EP, I_V, I_BG, I_BA, I_G;
         IESKF();
 
         IESKF(size_t max_iter) : max_iter_(max_iter) {}
 
-        void setMaxIter(int max_iter)
-        {
-            assert(max_iter > 0);
-            max_iter_ = max_iter;
-        }
-
+        void setMaxIter(int max_iter) { max_iter_ = max_iter; }
+        
         State &x() { return x_; }
+
+        void change_x(State &x) { x_ = x; }
 
         Matrix23d &P() { return P_; }
 
         void set_share_function(measure_func func) { func_ = func; }
+
+        void change_P(Matrix23d &P) { P_ = P; }
 
         void predict(const Input &inp, double dt, const Matrix12d &Q);
 
@@ -105,4 +107,4 @@ namespace lio
         Matrix23d F_;
         Matrix23x12d G_;
     };
-}
+} // namespace kf

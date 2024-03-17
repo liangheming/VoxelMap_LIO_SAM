@@ -1,5 +1,7 @@
 #pragma once
 #include <Eigen/Eigen>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 
 namespace lio
 {
@@ -11,19 +13,26 @@ namespace lio
 
     Eigen::Matrix3d Jr(const Eigen::Vector3d &vec);
 
-    Eigen::Matrix3d Jr_inv(const Eigen::Vector3d &vec);
+    Eigen::Vector3d rotate2rpy(Eigen::Matrix3d &rot);
+    
+    float sq_dist(const pcl::PointXYZINormal &p1, const pcl::PointXYZINormal &p2);
 
     struct IMUData
     {
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Eigen::Vector3d acc;
         Eigen::Vector3d gyro;
-        double sec;
+        double timestamp;
         IMUData() = default;
-        IMUData(const Eigen::Vector3d &a, const Eigen::Vector3d &g, double &d) : acc(a), gyro(g), sec(d) {}
+        IMUData(const Eigen::Vector3d &a, const Eigen::Vector3d &g, double &d) : acc(a), gyro(g), timestamp(d) {}
     };
-
-    Eigen::Vector3d rotate2rpy(Eigen::Matrix3d &rot);
-
+    struct SyncPackage
+    {
+        std::vector<lio::IMUData> imus;
+        pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud;
+        double cloud_start_time = 0.0;
+        double cloud_end_time = 0.0;
+    };
     struct Pose
     {
     public:

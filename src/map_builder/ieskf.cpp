@@ -1,42 +1,49 @@
 #include "ieskf.h"
-namespace lio
+
+namespace kf
 {
+
+    Eigen::Matrix3d rightJacobian(const Eigen::Vector3d &inp)
+    {
+        return Sophus::SO3d::leftJacobian(inp).transpose();
+    }
+
     void State::operator+=(const Vector23d &delta)
     {
         pos += delta.segment<3>(0);
-        rot *= Exp(delta.segment<3>(3));
-        rot_ext *= Exp(delta.segment<3>(6));
+        rot *= Sophus::SO3d::exp(delta.segment<3>(3)).matrix();
+        rot_ext *= Sophus::SO3d::exp(delta.segment<3>(6)).matrix();
         pos_ext += delta.segment<3>(9);
         vel += delta.segment<3>(12);
         bg += delta.segment<3>(15);
         ba += delta.segment<3>(18);
-        g = Exp(getBx() * delta.segment<2>(21)) * g;
+        g = Sophus::SO3d::exp(getBx() * delta.segment<2>(21)).matrix() * g;
     }
 
     void State::operator+=(const Vector24d &delta)
     {
         pos += delta.segment<3>(0);
-        rot *= Exp(delta.segment<3>(3));
-        rot_ext *= Exp(delta.segment<3>(6));
+        rot *= Sophus::SO3d::exp(delta.segment<3>(3)).matrix();
+        rot_ext *= Sophus::SO3d::exp(delta.segment<3>(6)).matrix();
         pos_ext += delta.segment<3>(9);
         vel += delta.segment<3>(12);
         bg += delta.segment<3>(15);
         ba += delta.segment<3>(18);
-        g = Exp(delta.segment<3>(21)).matrix() * g;
+        g = Sophus::SO3d::exp(delta.segment<3>(21)).matrix() * g;
     }
 
     Vector23d State::operator-(const State &other)
     {
         Vector23d delta = Vector23d::Zero();
         delta.segment<3>(0) = pos - other.pos;
-        delta.segment<3>(3) = Log(other.rot.transpose() * rot);
-        delta.segment<3>(6) = Log(other.rot_ext.transpose() * rot_ext);
+        delta.segment<3>(3) = Sophus::SO3d(other.rot.transpose() * rot).log();
+        delta.segment<3>(6) = Sophus::SO3d(other.rot_ext.transpose() * rot_ext).log();
         delta.segment<3>(9) = pos_ext - other.pos_ext;
         delta.segment<3>(12) = vel - other.vel;
         delta.segment<3>(15) = bg - other.bg;
         delta.segment<3>(18) = ba - other.ba;
 
-        double v_sin = (skew(g) * other.g).norm();
+        double v_sin = (Sophus::SO3d::hat(g) * other.g).norm();
         double v_cos = g.transpose() * other.g;
         double theta = std::atan2(v_sin, v_cos);
         Eigen::Vector2d res;
@@ -53,7 +60,7 @@ namespace lio
         }
         else
         {
-            res = theta / v_sin * other.getBx().transpose() * skew(other.g) * g;
+            res = theta / v_sin * other.getBx().transpose() * Sophus::SO3d::hat(other.g) * g;
         }
         delta.segment<2>(21) = res;
         return delta;
@@ -72,22 +79,20 @@ namespace lio
     Matrix3x2d State::getMx() const
     {
 
-        return -skew(g) * getBx();
+        return -Sophus::SO3d::hat(g) * getBx();
     }
 
     Matrix3x2d State::getMx(const Eigen::Vector2d &res) const
     {
         Matrix3x2d bx = getBx();
         Eigen::Vector3d bu = bx * res;
-        return -Exp(bu) * skew(g) * Jr(bu) * bx;
+        return -Sophus::SO3d::exp(bu).matrix() * Sophus::SO3d::hat(g) * Sophus::SO3d::leftJacobian(bu).transpose() * bx;
     }
 
     Matrix2x3d State::getNx() const
     {
-        return 1 / GRAVITY / GRAVITY * getBx().transpose() * skew(g);
+        return 1 / GRAVITY / GRAVITY * getBx().transpose() * Sophus::SO3d::hat(g);
     }
-
-    int IESKF::I_P = 0, IESKF::I_R = 3, IESKF::I_ER = 6, IESKF::I_EP = 9, IESKF::I_V = 12, IESKF::I_BG = 15, IESKF::I_BA = 18, IESKF::I_G = 21;
 
     IESKF::IESKF() = default;
 
@@ -100,14 +105,14 @@ namespace lio
         F_.setIdentity();
         F_.block<3, 3>(0, 12) = Eigen::Matrix3d::Identity() * dt;
         F_.block<3, 3>(3, 3) = Sophus::SO3d::exp(-(inp.gyro - x_.bg) * dt).matrix();
-        F_.block<3, 3>(3, 15) = -Sophus::SO3d::leftJacobian((inp.gyro - x_.bg) * dt).transpose() * dt;
+        F_.block<3, 3>(3, 15) = -rightJacobian((inp.gyro - x_.bg) * dt) * dt;
         F_.block<3, 3>(12, 3) = -x_.rot * Sophus::SO3d::hat(inp.acc - x_.ba) * dt;
         F_.block<3, 3>(12, 18) = -x_.rot * dt;
         F_.block<3, 2>(12, 21) = x_.getMx() * dt;
         F_.block<2, 2>(21, 21) = x_.getNx() * x_.getMx();
 
         G_.setZero();
-        G_.block<3, 3>(3, 0) = -Sophus::SO3d::leftJacobian((inp.gyro - x_.bg) * dt).transpose() * dt;
+        G_.block<3, 3>(3, 0) = -rightJacobian((inp.gyro - x_.bg) * dt) * dt;
         G_.block<3, 3>(12, 3) = -x_.rot * dt;
         G_.block<3, 3>(15, 6) = Eigen::Matrix3d::Identity() * dt;
         G_.block<3, 3>(18, 9) = Eigen::Matrix3d::Identity() * dt;
@@ -128,8 +133,8 @@ namespace lio
             b_.setZero();
             delta = x_ - predict_x;
             Matrix23d J = Matrix23d::Identity();
-            J.block<3, 3>(3, 3) = Jr(delta.segment<3>(3));
-            J.block<3, 3>(6, 6) = Jr(delta.segment<3>(6));
+            J.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
+            J.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
             J.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
             b_ += (J.transpose() * P_.inverse() * delta);
             H_ += (J.transpose() * P_.inverse() * J);
@@ -142,9 +147,10 @@ namespace lio
                 break;
         }
         Matrix23d L = Matrix23d::Identity();
-        L.block<3, 3>(3, 3) = Jr(delta.segment<3>(3));
-        L.block<3, 3>(6, 6) = Jr(delta.segment<3>(6));
+        L.block<3, 3>(3, 3) = rightJacobian(delta.segment<3>(3));
+        L.block<3, 3>(6, 6) = rightJacobian(delta.segment<3>(6));
         L.block<2, 2>(21, 21) = x_.getNx() * predict_x.getMx(delta.segment<2>(21));
         P_ = L * H_.inverse() * L.transpose();
     }
-}
+
+} // namespace kf

@@ -22,7 +22,9 @@
   <depend>pcl_ros</depend>
   <depend>livox_ros_driver2</depend>
 
-
+  <depend>tf2_ros</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
   <export>
   </export>
 </package>

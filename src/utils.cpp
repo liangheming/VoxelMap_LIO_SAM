@@ -38,3 +38,38 @@ sensor_msgs::PointCloud2 pcl2msg(pcl::PointCloud<pcl::PointXYZINormal>::Ptr inp,
     return msg;
 }
 
+geometry_msgs::TransformStamped eigen2Transform(const Eigen::Matrix3d &rot, const Eigen::Vector3d &pos, const std::string &frame_id, const std::string &child_frame_id, const double &timestamp)
+{
+    geometry_msgs::TransformStamped transform;
+    transform.header.frame_id = frame_id;
+    transform.header.stamp = ros::Time().fromSec(timestamp);
+    transform.child_frame_id = child_frame_id;
+    transform.transform.translation.x = pos(0);
+    transform.transform.translation.y = pos(1);
+    transform.transform.translation.z = pos(2);
+    Eigen::Quaterniond q = Eigen::Quaterniond(rot);
+   
+    transform.transform.rotation.w = q.w();
+    transform.transform.rotation.x = q.x();
+    transform.transform.rotation.y = q.y();
+    transform.transform.rotation.z = q.z();
+    return transform;
+}
+
+nav_msgs::Odometry eigen2Odometry(const Eigen::Matrix3d &rot, const Eigen::Vector3d &pos, const std::string &frame_id, const std::string &child_frame_id, const double &timestamp)
+{
+    nav_msgs::Odometry odom;
+    odom.header.frame_id = frame_id;
+    odom.header.stamp = ros::Time().fromSec(timestamp);
+    odom.child_frame_id = child_frame_id;
+    Eigen::Quaterniond q = Eigen::Quaterniond(rot);
+    odom.pose.pose.position.x = pos(0);
+    odom.pose.pose.position.y = pos(1);
+    odom.pose.pose.position.z = pos(2);
+
+    odom.pose.pose.orientation.w = q.w();
+    odom.pose.pose.orientation.x = q.x();
+    odom.pose.pose.orientation.y = q.y();
+    odom.pose.pose.orientation.z = q.z();
+    return odom;
+}
