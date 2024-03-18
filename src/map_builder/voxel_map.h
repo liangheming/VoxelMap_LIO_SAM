@@ -39,19 +39,26 @@ namespace lio
         Eigen::Vector3d center;
         Eigen::Vector3d normal;
         Eigen::Matrix3d covariance;
+        Eigen::Vector3d eigens;
         Eigen::Matrix<double, 6, 6> plane_cov;
         bool is_valid;
         int points_size;
+        double radius;
     };
     class OctoTree
     {
     public:
+        double quater_length;
+        Eigen::Vector3d center;
         OctoTree() = default;
         OctoTree(int max_layer, int layer, std::vector<int> update_size_threshes, int max_point_thresh, double plane_thresh);
-        void push_back(const PointWithCov& pv);
-        void insert_back(const PointWithCov& pv);
+        void push_back(const PointWithCov &pv);
+        void insert_back(const PointWithCov &pv);
         void init_plane(const std::vector<PointWithCov> &points);
         void update_plane(const std::vector<PointWithCov> &points);
+        void initial_tree();
+        void split_tree();
+        int subIndex(const PointWithCov &pv, int *xyz);
 
     private:
         Plane plane_;
@@ -60,7 +67,7 @@ namespace lio
         bool is_leave_;
         bool is_initialized_;
         bool update_enable_;
-        Eigen::Vector3d center_;
+
         std::vector<std::shared_ptr<OctoTree>> leaves_;
         std::vector<PointWithCov> temp_points_;
         std::vector<PointWithCov> new_points_;
@@ -69,7 +76,6 @@ namespace lio
         double plane_thresh_;
         int max_point_thresh_;
         int update_size_thresh_for_new_;
-        double quater_length_;
         int all_point_num_;
         int new_point_num_;
     };
