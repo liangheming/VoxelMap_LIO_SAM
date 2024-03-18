@@ -52,7 +52,7 @@ set(SRC_LIST src/utils.cpp
              src/map_builder/commons.cpp
              src/map_builder/ieskf.cpp
              src/map_builder/lio_builder.cpp
-             src/map_builder/ikd_Tree.cpp)
+             )
 
 add_executable(mapping_node src/mapping_node.cpp ${SRC_LIST})
 

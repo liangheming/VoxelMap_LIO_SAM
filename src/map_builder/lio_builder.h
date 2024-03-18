@@ -1,11 +1,8 @@
 #pragma once
 #include <queue>
-
 #include "ieskf.h"
 #include "commons.h"
 #include <Eigen/Eigen>
-
-#include "ikd_Tree.h"
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
 
@@ -44,36 +41,6 @@ namespace lio
         kf::Matrix12d Q = kf::Matrix12d::Identity();
     };
 
-    struct LocalMap
-    {
-        double cube_len = 300;
-        double det_range = 60;
-        double move_thresh = 1.5;
-        bool is_initialed = false;
-        BoxPointType local_map_corner;
-        std::vector<BoxPointType> cub_to_rm;
-    };
-
-    struct FASTLIODataGroup
-    {
-        double resolution = 0.5;
-        std::shared_ptr<KD_TREE<pcl::PointXYZINormal>> ikdtree;
-        LocalMap local_map;
-        pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud_down_lidar;
-        pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud_down_world;
-        std::vector<KD_TREE<pcl::PointXYZINormal>::PointVector> nearest_points;
-        std::vector<bool> point_selected_flag;
-        pcl::PointCloud<pcl::PointXYZINormal>::Ptr norm_vec;
-        pcl::PointCloud<pcl::PointXYZINormal>::Ptr effect_cloud_lidar;
-        pcl::PointCloud<pcl::PointXYZINormal>::Ptr effect_norm_vec;
-
-        FASTLIODataGroup() = default;
-        void initialize(double _resolution);
-        bool esti_plane(Eigen::Vector4d &out, const KD_TREE<pcl::PointXYZINormal>::PointVector &points, const double &thresh);
-        void trimMap(kf::State state);
-        void increaseMap(kf::State state);
-        void sharedUpdateFunc(kf::State &state, kf::SharedState &share_data);
-    };
 
     class LioBuilder
     {
@@ -99,7 +66,6 @@ namespace lio
         LIOParams params_;
         LIOStatus status_;
         LIODataGroup data_group_;
-        FASTLIODataGroup fastlio_data_;
         pcl::VoxelGrid<pcl::PointXYZINormal> scan_filter_;
     };
 } // namespace lio
