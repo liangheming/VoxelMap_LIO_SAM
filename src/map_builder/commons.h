@@ -18,7 +18,7 @@ namespace lio
         IMUData() = default;
         IMUData(const Eigen::Vector3d &a, const Eigen::Vector3d &g, double &d) : acc(a), gyro(g), timestamp(d) {}
     };
-    
+
     struct SyncPackage
     {
         std::vector<lio::IMUData> imus;
@@ -42,4 +42,5 @@ namespace lio
         double offset;
     };
 
+    void calcBodyCov(Eigen::Vector3d &pb, const double &range_inc, const double &degree_inc, Eigen::Matrix3d &cov);
 }

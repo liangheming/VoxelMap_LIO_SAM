@@ -287,4 +287,46 @@ namespace lio
         }
     }
 
+    void VoxelMap::buildMap(const std::vector<PointWithCov> &input_points)
+    {
+        uint plsize = input_points.size();
+        for (uint i = 0; i < plsize; i++)
+        {
+            const PointWithCov p_v = input_points[i];
+            Eigen::Vector3d idx = (p_v.point / voxel_size_).array().floor();
+            VoxelKey k(static_cast<int64_t>(idx(0)), static_cast<int64_t>(idx(1)), static_cast<int64_t>(idx(2)));
+            auto iter = feat_map.find(k);
+            if (iter == feat_map.end())
+            {
+                feat_map[k] = std::make_shared<OctoTree>(max_layer_, 0, update_size_threshes_, max_point_thresh_, plane_thresh_);
+                feat_map[k]->center = Eigen::Vector3d((0.5 + k.x) * voxel_size_, (0.5 + k.y) * voxel_size_, (0.5 + k.z) * voxel_size_);
+                feat_map[k]->quater_length = voxel_size_ / 4;
+            }
+            feat_map[k]->push_back(p_v);
+        }
+
+        for (auto iter = feat_map.begin(); iter != feat_map.end(); ++iter)
+        {
+            iter->second->initial_tree();
+        }
+    }
+
+    void VoxelMap::updateMap(const std::vector<PointWithCov> &input_points)
+    {
+        uint plsize = input_points.size();
+        for (uint i = 0; i < plsize; i++)
+        {
+            const PointWithCov p_v = input_points[i];
+            Eigen::Vector3d idx = (p_v.point / voxel_size_).array().floor();
+            VoxelKey k(static_cast<int64_t>(idx(0)), static_cast<int64_t>(idx(1)), static_cast<int64_t>(idx(2)));
+            auto iter = feat_map.find(k);
+            if (iter == feat_map.end())
+            {
+                feat_map[k] = std::make_shared<OctoTree>(max_layer_, 0, update_size_threshes_, max_point_thresh_, plane_thresh_);
+                feat_map[k]->center = Eigen::Vector3d((0.5 + k.x) * voxel_size_, (0.5 + k.y) * voxel_size_, (0.5 + k.z) * voxel_size_);
+                feat_map[k]->quater_length = voxel_size_ / 4;
+            }
+            feat_map[k]->insert_back(p_v);
+        }
+    }
 } // namespace lio

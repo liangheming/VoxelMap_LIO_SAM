@@ -4,6 +4,7 @@
 #include <memory>
 #include <cstdint>
 #include <Eigen/Eigen>
+#include <unordered_map>
 #define HASH_P 116101
 #define MAX_N 10000000000
 
@@ -15,7 +16,7 @@ namespace lio
     public:
         int64_t x, y, z;
         VoxelKey(int64_t _x = 0, int64_t _y = 0, int64_t _z = 0) : x(_x), y(_y), z(_z) {}
-        bool operator==(const VoxelKey &other)
+        bool operator==(const VoxelKey &other) const
         {
             return (x == other.x && y == other.y && z == other.z);
         }
@@ -27,12 +28,14 @@ namespace lio
             }
         };
     };
+
     struct PointWithCov
     {
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Eigen::Vector3d point;
         Eigen::Matrix3d cov;
     };
+
     struct Plane
     {
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -45,6 +48,7 @@ namespace lio
         int points_size;
         double radius;
     };
+
     class OctoTree
     {
     public:
@@ -78,5 +82,26 @@ namespace lio
         int update_size_thresh_for_new_;
         int all_point_num_;
         int new_point_num_;
+    };
+
+    class VoxelMap
+    {
+        typedef std::unordered_map<VoxelKey, std::shared_ptr<OctoTree>, VoxelKey::Hasher> FeatMap;
+
+    public:
+        FeatMap feat_map;
+        void buildMap(const std::vector<PointWithCov> &input_points);
+        void updateMap(const std::vector<PointWithCov> &input_points);
+        VoxelMap(double voxel_size, int max_layer, std::vector<int> &update_size_threshes, int max_point_thresh, double plane_thresh)
+            : voxel_size_(voxel_size), max_layer_(max_layer), update_size_threshes_(update_size_threshes), max_point_thresh_(max_point_thresh), plane_thresh_(plane_thresh)
+        {
+        }
+
+    private:
+        double voxel_size_;
+        int max_layer_;
+        std::vector<int> update_size_threshes_;
+        int max_point_thresh_;
+        double plane_thresh_;
     };
 } // namespace lio
