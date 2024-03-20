@@ -76,12 +76,13 @@ namespace kf
     class IESKF
     {
     public:
+        static int P_ID, R_ID, ER_ID, EP_ID, V_ID, BG_ID, BA_ID, G_ID;
         IESKF();
 
         IESKF(size_t max_iter) : max_iter_(max_iter) {}
 
         void setMaxIter(int max_iter) { max_iter_ = max_iter; }
-        
+
         State &x() { return x_; }
 
         void change_x(State &x) { x_ = x; }

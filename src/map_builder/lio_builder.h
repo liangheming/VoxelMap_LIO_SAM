@@ -5,6 +5,7 @@
 #include <Eigen/Eigen>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
+#include "voxel_map.h"
 
 namespace lio
 {
@@ -27,6 +28,15 @@ namespace lio
         Eigen::Vector3d p_il = Eigen::Vector3d::Zero();
         double scan_resolution = 0.25;
         double map_resolution = 0.25;
+
+        int max_layer = 2;
+        double voxel_size = 0.5;
+        std::vector<int> update_size_threshes = std::vector<int>{20, 10};
+        int max_point_thresh = 200;
+        double plane_thresh = 0.01;
+
+        double ranging_cov = 0.04;
+        double angle_cov = 0.1;
     };
 
     struct LIODataGroup
@@ -40,7 +50,6 @@ namespace lio
         double gravity_norm;
         kf::Matrix12d Q = kf::Matrix12d::Identity();
     };
-
 
     class LioBuilder
     {
@@ -67,5 +76,6 @@ namespace lio
         LIOStatus status_;
         LIODataGroup data_group_;
         pcl::VoxelGrid<pcl::PointXYZINormal> scan_filter_;
+        std::shared_ptr<VoxelMap> map_;
     };
 } // namespace lio

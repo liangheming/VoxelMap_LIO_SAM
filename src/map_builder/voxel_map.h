@@ -47,6 +47,7 @@ namespace lio
         bool is_valid;
         int points_size;
         double radius;
+        double d;
     };
 
     class OctoTree
@@ -96,6 +97,7 @@ namespace lio
             : voxel_size_(voxel_size), max_layer_(max_layer), update_size_threshes_(update_size_threshes), max_point_thresh_(max_point_thresh), plane_thresh_(plane_thresh)
         {
         }
+        size_t size() { return feat_map.size(); }
 
     private:
         double voxel_size_;

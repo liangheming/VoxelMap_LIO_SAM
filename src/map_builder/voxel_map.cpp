@@ -1,4 +1,5 @@
 #include "voxel_map.h"
+#include <iostream>
 namespace lio
 {
 
@@ -18,9 +19,7 @@ namespace lio
         is_initialized_ = false;
         update_enable_ = true;
         update_size_thresh_ = update_size_threshes_[layer_];
-        leaves_.reserve(8);
-        for (int i = 0; i < 8; i++)
-            leaves_[i] = nullptr;
+        leaves_.resize(8, nullptr);
     }
 
     void OctoTree::push_back(const PointWithCov &pv)
@@ -62,6 +61,7 @@ namespace lio
         plane_.eigens << evalsReal(evalsMin), evalsReal(evalsMid), evalsReal(evalsMax);
         plane_.normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
         plane_.radius = std::sqrt(plane_.eigens(2));
+        // plane_.d = -plane_.center.dot(plane_.normal);
 
         if (plane_.eigens(0) < plane_thresh_)
         {
@@ -135,6 +135,7 @@ namespace lio
         plane_.eigens << evalsReal(evalsMin), evalsReal(evalsMid), evalsReal(evalsMax);
         plane_.normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
         plane_.radius = std::sqrt(plane_.eigens(2));
+        // plane_.d = plane_.center.dot(plane_.normal);
         if (plane_.eigens(0) < plane_thresh_)
         {
             plane_.is_valid = true;
@@ -292,7 +293,7 @@ namespace lio
         uint plsize = input_points.size();
         for (uint i = 0; i < plsize; i++)
         {
-            const PointWithCov p_v = input_points[i];
+            const PointWithCov &p_v = input_points[i];
             Eigen::Vector3d idx = (p_v.point / voxel_size_).array().floor();
             VoxelKey k(static_cast<int64_t>(idx(0)), static_cast<int64_t>(idx(1)), static_cast<int64_t>(idx(2)));
             auto iter = feat_map.find(k);
@@ -304,7 +305,6 @@ namespace lio
             }
             feat_map[k]->push_back(p_v);
         }
-
         for (auto iter = feat_map.begin(); iter != feat_map.end(); ++iter)
         {
             iter->second->initial_tree();

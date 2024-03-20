@@ -96,6 +96,8 @@ namespace kf
 
     IESKF::IESKF() = default;
 
+    int IESKF::P_ID = 0, IESKF::R_ID = 3, IESKF::ER_ID = 6, IESKF::EP_ID = 9, IESKF::V_ID = 12, IESKF::BG_ID = 15, IESKF::BA_ID = 18, IESKF::G_ID = 21;
+
     void IESKF::predict(const Input &inp, double dt, const Matrix12d &Q)
     {
         Vector24d delta = Vector24d::Zero();

@@ -12,11 +12,11 @@ namespace lio
         data_group_.Q.block<3, 3>(6, 6) = Eigen::Matrix3d::Identity() * params.nbg;
         data_group_.Q.block<3, 3>(9, 9) = Eigen::Matrix3d::Identity() * params.nba;
         scan_filter_.setLeafSize(params.scan_resolution, params.scan_resolution, params.scan_resolution);
+        map_ = std::make_shared<VoxelMap>(params.voxel_size, params.max_layer, params.update_size_threshes, params.max_point_thresh, params.plane_thresh);
+
         // kf_.set_share_function(
         //     [&](kf::State &s, kf::SharedState &d)
         //     { fastlio_data_.sharedUpdateFunc(s, d); });
-
-       
     }
 
     void LioBuilder::operator()(SyncPackage &package)
@@ -34,15 +34,34 @@ namespace lio
         {
             undistortCloud(package);
             pcl::PointCloud<pcl::PointXYZINormal>::Ptr point_world = transformToWorld(package.cloud);
-           
+            std::vector<PointWithCov> pv_list;
+            for (size_t i = 0; i < point_world->size(); i++)
+            {
+                PointWithCov pv;
+                pv.point = Eigen::Vector3d(point_world->points[i].x, point_world->points[i].y, point_world->points[i].z);
+                Eigen::Vector3d point_body(package.cloud->points[i].x, package.cloud->points[i].y, package.cloud->points[i].z);
+                Eigen::Matrix3d point_cov;
+                calcBodyCov(point_body, params_.ranging_cov, params_.angle_cov, point_cov);
+                Eigen::Matrix3d point_crossmat = Sophus::SO3d::hat(point_body);
+                Eigen::Matrix3d r_wl = kf_.x().rot * kf_.x().rot_ext;
+                Eigen::Vector3d p_wl = kf_.x().rot * kf_.x().pos_ext + kf_.x().pos;
+                point_cov = r_wl * point_cov * r_wl.transpose() +
+                            point_crossmat * kf_.P().block<3, 3>(kf::IESKF::R_ID, kf::IESKF::R_ID) * point_crossmat.transpose() +
+                            kf_.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
+                pv.cov = point_cov;
+                pv_list.push_back(pv);
+            }
+            map_->buildMap(pv_list);
+            std::cout << map_->size() << std::endl;
             status_ = LIOStatus::LIO_MAPPING;
         }
         else
         {
-            scan_filter_.setInputCloud(package.cloud);
-            scan_filter_.filter(*package.cloud);
-            undistortCloud(package);
-           
+            std::cout << "exit" << std::endl;
+            exit(0);
+            // scan_filter_.setInputCloud(package.cloud);
+            // scan_filter_.filter(*package.cloud);
+            // undistortCloud(package);
         }
     }
 
