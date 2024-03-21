@@ -23,6 +23,8 @@ namespace lio
         double nba = 0.0001;
         double nbg = 0.0001;
         bool gravity_align = true;
+        bool estimate_ext = false;
+
         int imu_init_num = 20;
         Eigen::Matrix3d r_il = Eigen::Matrix3d::Identity();
         Eigen::Vector3d p_il = Eigen::Vector3d::Zero();
@@ -49,11 +51,15 @@ namespace lio
         double last_cloud_end_time = 0.0;
         double gravity_norm;
         kf::Matrix12d Q = kf::Matrix12d::Identity();
+
+        std::vector<ResidualData> residual_info;
     };
 
     class LioBuilder
     {
     public:
+        pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud_lidar;
+
         LioBuilder() = default;
 
         void initialize(LIOParams &params);
@@ -69,6 +75,8 @@ namespace lio
         kf::State currentState() { return kf_.x(); }
 
         LIOStatus currentStatus() { return status_; }
+
+        void sharedUpdateFunc(kf::State &state, kf::SharedState &shared_state);
 
     private:
         kf::IESKF kf_;

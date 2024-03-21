@@ -19,6 +19,7 @@ namespace lio
         is_initialized_ = false;
         update_enable_ = true;
         update_size_thresh_ = update_size_threshes_[layer_];
+        plane_.is_valid = false;
         leaves_.resize(8, nullptr);
     }
 
@@ -60,8 +61,8 @@ namespace lio
         Eigen::Matrix3d J_Q = Eigen::Matrix3d::Identity() * 1.0 / static_cast<double>(plane_.points_size);
         plane_.eigens << evalsReal(evalsMin), evalsReal(evalsMid), evalsReal(evalsMax);
         plane_.normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
+
         plane_.radius = std::sqrt(plane_.eigens(2));
-        // plane_.d = -plane_.center.dot(plane_.normal);
 
         if (plane_.eigens(0) < plane_thresh_)
         {
@@ -327,6 +328,44 @@ namespace lio
                 feat_map[k]->quater_length = voxel_size_ / 4;
             }
             feat_map[k]->insert_back(p_v);
+        }
+    }
+
+    void VoxelMap::buildResidual(ResidualData &info, std::shared_ptr<OctoTree> oct_tree)
+    {
+        info.is_valid = false;
+        if (oct_tree->plane().is_valid)
+        {
+            Eigen::Vector3d p_world_to_center = info.point_world - oct_tree->plane().center;
+            info.plane_center = oct_tree->plane().center;
+            info.plane_norm = oct_tree->plane().normal;
+            info.plane_cov = oct_tree->plane().plane_cov;
+            info.residual = info.plane_norm.transpose() * p_world_to_center;
+            double dis_to_plane = std::abs(info.residual);
+            Eigen::Matrix<double, 1, 6> J_nq;
+            J_nq.block<1, 3>(0, 0) = p_world_to_center;
+            J_nq.block<1, 3>(0, 3) = -info.plane_norm;
+            double sigma_l = J_nq * info.plane_cov * J_nq.transpose();
+            sigma_l += info.plane_norm.transpose() * info.cov * info.plane_norm;
+            if (dis_to_plane < info.sigma_num * sqrt(sigma_l))
+            {
+                info.is_valid = true;
+            }
+        }
+        else
+        {
+            if (info.current_layer < max_layer_)
+            {
+                for (size_t i = 0; i < 8; i++)
+                {
+                    if (oct_tree->leaves()[i] == nullptr)
+                        continue;
+                    info.current_layer += 1;
+                    buildResidual(info, oct_tree->leaves()[i]);
+                    if (info.is_valid)
+                        break;
+                }
+            }
         }
     }
 } // namespace lio

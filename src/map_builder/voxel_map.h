@@ -16,6 +16,13 @@ namespace lio
     public:
         int64_t x, y, z;
         VoxelKey(int64_t _x = 0, int64_t _y = 0, int64_t _z = 0) : x(_x), y(_y), z(_z) {}
+        VoxelKey(const Eigen::Vector3d &position)
+        {
+            Eigen::Vector3d idx = position.array().floor();
+            x = static_cast<int64_t>(idx(0));
+            y = static_cast<int64_t>(idx(1));
+            z = static_cast<int64_t>(idx(2));
+        }
         bool operator==(const VoxelKey &other) const
         {
             return (x == other.x && y == other.y && z == other.z);
@@ -64,6 +71,9 @@ namespace lio
         void initial_tree();
         void split_tree();
         int subIndex(const PointWithCov &pv, int *xyz);
+        Plane &plane() { return plane_; }
+        int layer() { return layer_; }
+        std::vector<std::shared_ptr<OctoTree>> &leaves() { return leaves_; }
 
     private:
         Plane plane_;
@@ -84,7 +94,21 @@ namespace lio
         int all_point_num_;
         int new_point_num_;
     };
-
+    struct ResidualData
+    {
+        Eigen::Vector3d plane_center;
+        Eigen::Vector3d plane_norm;
+        Eigen::Matrix<double, 6, 6> plane_cov;
+        Eigen::Matrix3d pcov;
+        Eigen::Matrix3d cov;
+        Eigen::Vector3d point_lidar;
+        Eigen::Vector3d point_world;
+        bool is_valid = false;
+        bool from_near = false;
+        int current_layer = 0;
+        double sigma_num = 3.0;
+        double residual = 0.0;
+    };
     class VoxelMap
     {
         typedef std::unordered_map<VoxelKey, std::shared_ptr<OctoTree>, VoxelKey::Hasher> FeatMap;
@@ -98,6 +122,8 @@ namespace lio
         {
         }
         size_t size() { return feat_map.size(); }
+
+        void buildResidual(ResidualData &info, std::shared_ptr<OctoTree> oct_tree);
 
     private:
         double voxel_size_;

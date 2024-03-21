@@ -186,11 +186,11 @@ public:
             map_builder_(sync_pack_);
             if (map_builder_.currentStatus() != lio::LIOStatus::LIO_MAPPING)
                 continue;
-            // current_state_ = map_builder_.currentState();
-            // br_.sendTransform(eigen2Transform(current_state_.rot, current_state_.pos, "map", "body", sync_pack_.cloud_end_time));
-            // publishBodyCloud(sync_pack_.cloud_end_time);
-            // publishWorldCloud(sync_pack_.cloud_end_time);
-            // publishOdom(sync_pack_.cloud_end_time);
+            current_state_ = map_builder_.currentState();
+            br_.sendTransform(eigen2Transform(current_state_.rot, current_state_.pos, "map", "body", sync_pack_.cloud_end_time));
+            publishBodyCloud(sync_pack_.cloud_end_time);
+            publishWorldCloud(sync_pack_.cloud_end_time);
+            publishOdom(sync_pack_.cloud_end_time);
         }
     }
 
