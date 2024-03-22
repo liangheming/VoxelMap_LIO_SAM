@@ -4,7 +4,7 @@ filter_num: 3
 blind_range: 0.5
 
 lio_expect_hz: 50
-scan_resolution: 0.05
+scan_resolution: 0.1
 gravity_align: true
 imu_init_num: 20
 opti_max_iter: 5

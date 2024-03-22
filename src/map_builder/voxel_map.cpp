@@ -48,26 +48,15 @@ namespace lio
         Eigen::Matrix3cd evecs = es.eigenvectors();
         Eigen::Vector3cd evals = es.eigenvalues();
         Eigen::Vector3d evalsReal = evals.real();
-
         Eigen::Matrix3d::Index evalsMin, evalsMax;
         evalsReal.rowwise().sum().minCoeff(&evalsMin);
         evalsReal.rowwise().sum().maxCoeff(&evalsMax);
         int evalsMid = 3 - evalsMin - evalsMax;
 
         Eigen::Matrix3d J_Q = Eigen::Matrix3d::Identity() / static_cast<double>(plane_.points_size);
-        // std::cout << "before" << std::endl;
-        // std::cout << "thresh: " << update_size_thresh_ << std::endl;
-        // std::cout << plane_.center.transpose() << std::endl;
-        // std::cout << points.size() << std::endl;
-        // std::cout << plane_.covariance << std::endl;
-        // std::cout << evalsReal.transpose() << std::endl;
-        // std::cout << evalsMin << " " << evalsMid << " " << evalsMax << std::endl;
         plane_.eigens << evalsReal(evalsMin), evalsReal(evalsMid), evalsReal(evalsMax);
-        double min_eigen = evalsReal(evalsMin);
         plane_.normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
-        // std::cout << plane_.normal.transpose() << std::endl;
-        // std::cout << "end" << std::endl;
-        if (min_eigen < plane_thresh_)
+        if (plane_.eigens[0] < plane_thresh_)
         {
             for (int i = 0; i < points.size(); i++)
             {
@@ -154,9 +143,7 @@ namespace lio
             return;
         is_initialized_ = true;
         new_point_num_ = 0;
-
         init_plane(temp_points_);
-
         if (plane_.is_valid)
         {
             is_leave_ = true;

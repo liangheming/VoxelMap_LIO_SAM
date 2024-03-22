@@ -235,6 +235,10 @@ namespace lio
         Eigen::Vector3d p_wl = state.rot * state.pos_ext + state.pos;
 
         int size = cloud_lidar->size();
+#ifdef MP_EN
+        omp_set_num_threads(MP_PROC_NUM);
+#pragma omp parallel for
+#endif
         for (int i = 0; i < size; i++)
         {
             data_group_.residual_info[i].is_valid = false;
@@ -258,6 +262,7 @@ namespace lio
         Eigen::Matrix<double, 1, 12> J;
         Eigen::Matrix<double, 1, 6> J_v;
         int effect_num = 0;
+
         for (int i = 0; i < size; i++)
         {
             if (!data_group_.residual_info[i].is_valid)
