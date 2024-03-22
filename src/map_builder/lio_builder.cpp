@@ -85,7 +85,6 @@ namespace lio
                          kf_.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
                 pv_list.push_back(pv);
             }
-
             map_->updateMap(pv_list);
         }
     }
@@ -267,23 +266,20 @@ namespace lio
             J.setZero();
             J_v.block<1, 3>(0, 0) = (data_group_.residual_info[i].point_world - data_group_.residual_info[i].plane_center).transpose();
             J_v.block<1, 3>(0, 3) = -data_group_.residual_info[i].plane_norm.transpose();
-
             double r_cov = J_v * data_group_.residual_info[i].plane_cov * J_v.transpose();
             r_cov += data_group_.residual_info[i].plane_norm.transpose() * r_wl * data_group_.residual_info[i].pcov * r_wl.transpose() * data_group_.residual_info[i].plane_norm;
-
             double r_info = r_cov < 0.0001 ? 1000 : 1 / r_cov;
             assert(r_cov > 0.0);
             J.block<1, 3>(0, 0) = data_group_.residual_info[i].plane_norm.transpose();
-            J.block<1, 3>(0, 3) = -data_group_.residual_info[i].plane_norm.transpose() * state.rot * Sophus::SO3d::exp(state.rot_ext * data_group_.residual_info[i].point_lidar + state.pos_ext).matrix();
+            J.block<1, 3>(0, 3) = -data_group_.residual_info[i].plane_norm.transpose() * state.rot * Sophus::SO3d::hat(state.rot_ext * data_group_.residual_info[i].point_lidar + state.pos_ext);
             if (params_.estimate_ext)
             {
-                J.block<1, 3>(0, 6) = -data_group_.residual_info[i].plane_norm.transpose() * r_wl * Sophus::SO3d::exp(data_group_.residual_info[i].point_lidar).matrix();
+                J.block<1, 3>(0, 6) = -data_group_.residual_info[i].plane_norm.transpose() * r_wl * Sophus::SO3d::hat(data_group_.residual_info[i].point_lidar);
                 J.block<1, 3>(0, 9) = data_group_.residual_info[i].plane_norm.transpose() * state.rot;
             }
             shared_state.H += J.transpose() * r_info * J;
             shared_state.b += J.transpose() * r_info * data_group_.residual_info[i].residual;
         }
-
         if (effect_num < 1)
             std::cout << "NO EFFECTIVE POINT";
     }

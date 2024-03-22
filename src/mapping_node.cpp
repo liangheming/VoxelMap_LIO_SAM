@@ -51,7 +51,6 @@ public:
         nh_.param<double>("blind_range", params_.blind_range, 0.5);
         lio::LIOParams lio_params;
         nh_.param<double>("scan_resolution", lio_params.scan_resolution, 0.2);
-        nh_.param<double>("map_resolution", lio_params.map_resolution, 0.5);
         nh_.param<bool>("gravity_align", lio_params.gravity_align, true);
         nh_.param<int>("imu_init_num", lio_params.imu_init_num, 20);
         nh_.param<double>("na", lio_params.na, 0.01);

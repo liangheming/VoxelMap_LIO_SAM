@@ -54,20 +54,21 @@ namespace lio
         evalsReal.rowwise().sum().maxCoeff(&evalsMax);
         int evalsMid = 3 - evalsMin - evalsMax;
 
-        Eigen::Vector3d evecMin = evecs.real().col(evalsMin);
-        Eigen::Vector3d evecMid = evecs.real().col(evalsMid);
-        Eigen::Vector3d evecMax = evecs.real().col(evalsMax);
-
-        Eigen::Matrix3d J_Q = Eigen::Matrix3d::Identity() * 1.0 / static_cast<double>(plane_.points_size);
+        Eigen::Matrix3d J_Q = Eigen::Matrix3d::Identity() / static_cast<double>(plane_.points_size);
+        // std::cout << "before" << std::endl;
+        // std::cout << "thresh: " << update_size_thresh_ << std::endl;
+        // std::cout << plane_.center.transpose() << std::endl;
+        // std::cout << points.size() << std::endl;
+        // std::cout << plane_.covariance << std::endl;
+        // std::cout << evalsReal.transpose() << std::endl;
+        // std::cout << evalsMin << " " << evalsMid << " " << evalsMax << std::endl;
         plane_.eigens << evalsReal(evalsMin), evalsReal(evalsMid), evalsReal(evalsMax);
+        double min_eigen = evalsReal(evalsMin);
         plane_.normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
-
-        plane_.radius = std::sqrt(plane_.eigens(2));
-
-        if (plane_.eigens(0) < plane_thresh_)
+        // std::cout << plane_.normal.transpose() << std::endl;
+        // std::cout << "end" << std::endl;
+        if (min_eigen < plane_thresh_)
         {
-            std::vector<int> index(points.size());
-            std::vector<Eigen::Matrix<double, 6, 6>> temp_matrix(points.size());
             for (int i = 0; i < points.size(); i++)
             {
                 Eigen::Matrix<double, 6, 3> J;
@@ -153,7 +154,9 @@ namespace lio
             return;
         is_initialized_ = true;
         new_point_num_ = 0;
+
         init_plane(temp_points_);
+
         if (plane_.is_valid)
         {
             is_leave_ = true;
@@ -176,7 +179,7 @@ namespace lio
 
     void OctoTree::split_tree()
     {
-        if (layer_ >= max_layer_)
+        if (layer_ >= max_layer_ - 1)
         {
             is_leave_ = true;
             return;
@@ -188,6 +191,7 @@ namespace lio
             int leafnum = subIndex(temp_points_[i], xyz);
             if (leaves_[leafnum] == nullptr)
             {
+
                 leaves_[leafnum] = std::make_shared<OctoTree>(max_layer_, layer_ + 1, update_size_threshes_, max_point_thresh_, plane_thresh_);
                 Eigen::Vector3d shift((2 * xyz[0] - 1) * quater_length, (2 * xyz[1] - 1) * quater_length, (2 * xyz[2] - 1) * quater_length);
                 leaves_[leafnum]->center = center + shift;
@@ -333,7 +337,6 @@ namespace lio
 
     void VoxelMap::buildResidual(ResidualData &info, std::shared_ptr<OctoTree> oct_tree)
     {
-        info.is_valid = false;
         if (oct_tree->plane().is_valid)
         {
             Eigen::Vector3d p_world_to_center = info.point_world - oct_tree->plane().center;

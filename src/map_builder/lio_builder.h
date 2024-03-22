@@ -28,13 +28,12 @@ namespace lio
         int imu_init_num = 20;
         Eigen::Matrix3d r_il = Eigen::Matrix3d::Identity();
         Eigen::Vector3d p_il = Eigen::Vector3d::Zero();
-        double scan_resolution = 0.25;
-        double map_resolution = 0.25;
-
+        double scan_resolution = 0.1;
+        
         int max_layer = 2;
         double voxel_size = 0.5;
         std::vector<int> update_size_threshes = std::vector<int>{20, 10};
-        int max_point_thresh = 200;
+        int max_point_thresh = 100;
         double plane_thresh = 0.01;
 
         double ranging_cov = 0.04;
