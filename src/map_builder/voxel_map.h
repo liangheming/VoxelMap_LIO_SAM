@@ -1,5 +1,5 @@
 #pragma once
-
+#include <list>
 #include <vector>
 #include <memory>
 #include <cstdint>
@@ -16,13 +16,7 @@ namespace lio
     public:
         int64_t x, y, z;
         VoxelKey(int64_t _x = 0, int64_t _y = 0, int64_t _z = 0) : x(_x), y(_y), z(_z) {}
-        VoxelKey(const Eigen::Vector3d &position)
-        {
-            Eigen::Vector3d idx = position.array().floor();
-            x = static_cast<int64_t>(idx(0));
-            y = static_cast<int64_t>(idx(1));
-            z = static_cast<int64_t>(idx(2));
-        }
+
         bool operator==(const VoxelKey &other) const
         {
             return (x == other.x && y == other.y && z == other.z);
@@ -53,49 +47,11 @@ namespace lio
         Eigen::Matrix<double, 6, 6> plane_cov;
         bool is_valid;
         int points_size;
-        double radius;
-        double d;
     };
 
-    class OctoTree
-    {
-    public:
-        double quater_length;
-        Eigen::Vector3d center;
-        OctoTree() = default;
-        OctoTree(int max_layer, int layer, std::vector<int> update_size_threshes, int max_point_thresh, double plane_thresh);
-        void push_back(const PointWithCov &pv);
-        void insert_back(const PointWithCov &pv);
-        void init_plane(const std::vector<PointWithCov> &points);
-        void update_plane(const std::vector<PointWithCov> &points);
-        void initial_tree();
-        void split_tree();
-        int subIndex(const PointWithCov &pv, int *xyz);
-        Plane &plane() { return plane_; }
-        int layer() { return layer_; }
-        std::vector<std::shared_ptr<OctoTree>> &leaves() { return leaves_; }
-
-    private:
-        Plane plane_;
-        int layer_;
-        int max_layer_;
-        bool is_leave_;
-        bool is_initialized_;
-        bool update_enable_;
-
-        std::vector<std::shared_ptr<OctoTree>> leaves_;
-        std::vector<PointWithCov> temp_points_;
-        std::vector<PointWithCov> new_points_;
-        int update_size_thresh_;
-        std::vector<int> update_size_threshes_;
-        double plane_thresh_;
-        int max_point_thresh_;
-        int update_size_thresh_for_new_;
-        int all_point_num_;
-        int new_point_num_;
-    };
     struct ResidualData
     {
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Eigen::Vector3d plane_center;
         Eigen::Vector3d plane_norm;
         Eigen::Matrix<double, 6, 6> plane_cov;
@@ -109,27 +65,88 @@ namespace lio
         double sigma_num = 3.0;
         double residual = 0.0;
     };
-    class VoxelMap
+    class OctoTree
     {
-        typedef std::unordered_map<VoxelKey, std::shared_ptr<OctoTree>, VoxelKey::Hasher> FeatMap;
+    public:
+        OctoTree(int _max_layer, int _layer, std::vector<int> _update_size_threshes, int _max_point_thresh, double _plane_thresh);
+
+        void insert(const std::vector<PointWithCov> &input_points);
+
+        void initialize_tree();
+
+        void build_plane(const std::vector<PointWithCov> &points);
+
+        void split_tree();
+        int subIndex(const PointWithCov &pv, int *xyz);
 
     public:
-        FeatMap feat_map;
-        void buildMap(const std::vector<PointWithCov> &input_points);
-        void updateMap(const std::vector<PointWithCov> &input_points);
-        VoxelMap(double voxel_size, int max_layer, std::vector<int> &update_size_threshes, int max_point_thresh, double plane_thresh)
-            : voxel_size_(voxel_size), max_layer_(max_layer), update_size_threshes_(update_size_threshes), max_point_thresh_(max_point_thresh), plane_thresh_(plane_thresh)
+        double quater_length;
+        Eigen::Vector3d center;
+        Plane plane;
+        int layer;
+        int max_layer;
+        bool is_leave;
+        bool is_initialized;
+        bool update_enable;
+        std::vector<std::shared_ptr<OctoTree>> leaves;
+        std::vector<PointWithCov> temp_points;
+        int update_size_thresh;
+        std::vector<int> update_size_threshes;
+        double plane_thresh;
+        int max_point_thresh;
+        int update_size_thresh_for_new;
+        int all_point_num;
+        int new_point_num;
+    };
+    struct VoxelValue
+    {
+        std::list<VoxelKey>::iterator it;
+        std::shared_ptr<OctoTree> tree;
+    };
+
+    enum SubVoxelType
+    {
+        INSERT,
+        UPDATE
+    };
+
+    struct VoxelGrid
+    {
+        SubVoxelType type;
+        std::list<VoxelKey>::iterator it;
+        std::vector<PointWithCov> points;
+    };
+    class VoxelMap
+    {
+        typedef std::unordered_map<VoxelKey, VoxelValue, VoxelKey::Hasher> FeatMap;
+        typedef std::unordered_map<VoxelKey, VoxelGrid, VoxelKey::Hasher> SubMap;
+
+    public:
+        VoxelMap(double _voxel_size, int _max_layer, std::vector<int> &_update_size_threshes, int _max_point_thresh, double _plane_thresh, int _capacity = 5000000)
+            : voxel_size(_voxel_size), max_layer(_max_layer), update_size_threshes(_update_size_threshes), max_point_thresh(_max_point_thresh), plane_thresh(_plane_thresh), capacity(_capacity)
         {
+            feat_map.clear();
+            sub_map.clear();
+            cache.clear();
         }
-        size_t size() { return feat_map.size(); }
+
+        void insert(const std::vector<PointWithCov> &input_points);
+
+        void pack(const std::vector<PointWithCov> &input_points);
+
+        VoxelKey index(const Eigen::Vector3d &point);
 
         void buildResidual(ResidualData &info, std::shared_ptr<OctoTree> oct_tree);
 
-    private:
-        double voxel_size_;
-        int max_layer_;
-        std::vector<int> update_size_threshes_;
-        int max_point_thresh_;
-        double plane_thresh_;
+    public:
+        FeatMap feat_map;
+        SubMap sub_map;
+        std::list<VoxelKey> cache;
+        double voxel_size;
+        int max_layer;
+        std::vector<int> update_size_threshes;
+        int max_point_thresh;
+        double plane_thresh;
+        int capacity;
     };
 } // namespace lio

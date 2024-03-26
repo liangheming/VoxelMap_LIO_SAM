@@ -53,7 +53,7 @@ namespace lio
                 pv.cov = point_cov;
                 pv_list.push_back(pv);
             }
-            map_->buildMap(pv_list);
+            map_->insert(pv_list);
             status_ = LIOStatus::LIO_MAPPING;
         }
         else
@@ -85,7 +85,7 @@ namespace lio
                          kf_.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
                 pv_list.push_back(pv);
             }
-            map_->updateMap(pv_list);
+            map_->insert(pv_list);
         }
     }
 
@@ -250,11 +250,11 @@ namespace lio
             data_group_.residual_info[i].cov = r_wl * data_group_.residual_info[i].pcov * r_wl.transpose() +
                                                point_crossmat * kf_.P().block<3, 3>(kf::IESKF::R_ID, kf::IESKF::R_ID) * point_crossmat.transpose() +
                                                kf_.P().block<3, 3>(kf::IESKF::P_ID, kf::IESKF::P_ID);
-            VoxelKey position(data_group_.residual_info[i].point_world / params_.voxel_size);
+            VoxelKey position = map_->index(data_group_.residual_info[i].point_world);
             auto iter = map_->feat_map.find(position);
             if (iter != map_->feat_map.end())
             {
-                map_->buildResidual(data_group_.residual_info[i], iter->second);
+                map_->buildResidual(data_group_.residual_info[i], iter->second.tree);
             }
         }
         shared_state.H.setZero();

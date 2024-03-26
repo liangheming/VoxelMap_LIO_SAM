@@ -181,12 +181,12 @@ public:
             ros::spinOnce();
             if (!syncPackage())
                 continue;
-            // auto time_start = std::chrono::high_resolution_clock::now();
+            auto time_start = std::chrono::high_resolution_clock::now();
 
             map_builder_(sync_pack_);
-            // auto time_end = std::chrono::high_resolution_clock::now();
-            // double duration = std::chrono::duration_cast<std::chrono::duration<double>>(time_end - time_start).count() * 1000;
-            // ROS_INFO("PROCESS DUTATION: %.4f", duration);
+            auto time_end = std::chrono::high_resolution_clock::now();
+            double duration = std::chrono::duration_cast<std::chrono::duration<double>>(time_end - time_start).count() * 1000;
+            ROS_INFO("PROCESS DUTATION: %.4f", duration);
             if (map_builder_.currentStatus() != lio::LIOStatus::LIO_MAPPING)
                 continue;
             current_state_ = map_builder_.currentState();
