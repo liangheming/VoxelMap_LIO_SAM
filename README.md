@@ -5,6 +5,7 @@
 2. 重构[VoxelMap](https://github.com/hku-mars/VoxelMap)，并以此作为FASTLIO的地图管理模块
 3. 目前暂时支持MID_360的传感器
 4. 代码上LIO与ROS部分隔离，可以自行DIY至其他机器人框架
+5. 优化VOXEL_MAP的内存管理，增加删除Voxel(last recent used)的功能，以便于实际部署
 
 ## 环境说明
 ```text
@@ -60,7 +61,6 @@ roslaunch roslaunch voxel_lio_sam mapping_launch.launch
 rosbag play your_bag.bag
 ```
 ## TODO
-- 增加对VOXEL_MAP的内存管理功能【原始repo，只有新增voxel没有删除voxel，对实际部署不友好】；
 - 基于(STD)特征以及关键帧，实现回环模块以及相应的PGO；
 - 添加VOXEL_MAP++的模块，实现voxel合并逻辑；
 - 添加更多实用功能，如地图保存和voxel_map的可视化等；
