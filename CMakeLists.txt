@@ -39,6 +39,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}   ${OpenMP_C_FLAGS}")
 add_service_files(
   FILES
   SaveMap.srv
+  ConvertMap.srv
 )
 generate_messages(
   DEPENDENCIES

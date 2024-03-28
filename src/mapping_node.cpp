@@ -12,6 +12,7 @@
 #include <pcl/common/transforms.h>
 #include <chrono>
 #include "voxel_lio_sam/SaveMap.h"
+#include "voxel_lio_sam/ConvertMap.h"
 
 struct NodeParams
 {
@@ -89,6 +90,7 @@ public:
     void initServices()
     {
         save_map_srv_ = nh_.advertiseService("save_map", &LioMappingNode::saveMapCB, this);
+        convert_map_srv_ = nh_.advertiseService("convert_map", &LioMappingNode::convertMapCB, this);
     }
 
     void imuCB(const sensor_msgs::Imu::ConstPtr msg)
@@ -238,6 +240,24 @@ public:
         return true;
     }
 
+    bool convertMapCB(voxel_lio_sam::ConvertMap::Request &req, voxel_lio_sam::ConvertMap::Response &res)
+    {
+        pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
+        pcl::PCDReader reader;
+        reader.read(req.source, *cloud);
+
+        pcl::VoxelGrid<pcl::PointXYZINormal> filter;
+        filter.setLeafSize(req.resolution, req.resolution, req.resolution);
+        filter.setInputCloud(cloud);
+        filter.filter(*cloud);
+
+        pcl::PCDWriter writer;
+        writer.writeBinaryCompressed(req.target, *cloud);
+        res.status = true;
+        res.message = "save path: " + req.target;
+        return true;
+    }
+
 private:
     ros::NodeHandle &nh_;
     tf2_ros::TransformBroadcaster &br_;
@@ -256,6 +276,7 @@ private:
     kf::State current_state_;
     std::vector<pcl::PointCloud<pcl::PointXYZINormal>::Ptr> clouds_;
     ros::ServiceServer save_map_srv_;
+    ros::ServiceServer convert_map_srv_;
 };
 
 int main(int argc, char **argv)
