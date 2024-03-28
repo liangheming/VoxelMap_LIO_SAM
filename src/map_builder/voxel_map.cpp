@@ -16,6 +16,7 @@ namespace lio
         plane.is_valid = false;
         leaves.resize(8, nullptr);
     }
+    
     void OctoTree::insert(const std::vector<PointWithCov> &input_points)
     {
         if (!is_initialized)
@@ -178,7 +179,9 @@ namespace lio
 
         Eigen::Matrix3d J_Q = Eigen::Matrix3d::Identity() / static_cast<double>(plane.points_size);
         plane.eigens << evalsReal(evalsMin), evalsReal(evalsMid), evalsReal(evalsMax);
-        plane.normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
+        plane.normal = evecs.real().col(evalsMin);
+        plane.x_normal = evecs.real().col(evalsMax);
+        plane.y_normal = evecs.real().col(evalsMid);
 
         if (plane.eigens[0] < plane_thresh)
         {

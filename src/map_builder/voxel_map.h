@@ -42,6 +42,8 @@ namespace lio
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Eigen::Vector3d center;
         Eigen::Vector3d normal;
+        Eigen::Vector3d x_normal;
+        Eigen::Vector3d y_normal;
         Eigen::Matrix3d covariance;
         Eigen::Vector3d eigens;
         Eigen::Matrix<double, 6, 6> plane_cov;
@@ -116,11 +118,10 @@ namespace lio
         std::list<VoxelKey>::iterator it;
         std::vector<PointWithCov> points;
     };
+    typedef std::unordered_map<VoxelKey, VoxelValue, VoxelKey::Hasher> FeatMap;
+    typedef std::unordered_map<VoxelKey, VoxelGrid, VoxelKey::Hasher> SubMap;
     class VoxelMap
     {
-        typedef std::unordered_map<VoxelKey, VoxelValue, VoxelKey::Hasher> FeatMap;
-        typedef std::unordered_map<VoxelKey, VoxelGrid, VoxelKey::Hasher> SubMap;
-
     public:
         VoxelMap(double _voxel_size, int _max_layer, std::vector<int> &_update_size_threshes, int _max_point_thresh, double _plane_thresh, int _capacity = 5000000)
             : voxel_size(_voxel_size), max_layer(_max_layer), update_size_threshes(_update_size_threshes), max_point_thresh(_max_point_thresh), plane_thresh(_plane_thresh), capacity(_capacity)

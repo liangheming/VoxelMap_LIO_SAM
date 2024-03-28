@@ -29,7 +29,7 @@ namespace lio
         Eigen::Matrix3d r_il = Eigen::Matrix3d::Identity();
         Eigen::Vector3d p_il = Eigen::Vector3d::Zero();
         double scan_resolution = 0.1;
-        
+
         int max_layer = 2;
         double voxel_size = 0.5;
         std::vector<int> update_size_threshes = std::vector<int>{20, 10};
@@ -76,6 +76,8 @@ namespace lio
         LIOStatus currentStatus() { return status_; }
 
         void sharedUpdateFunc(kf::State &state, kf::SharedState &shared_state);
+
+        std::shared_ptr<VoxelMap> voxelMap() { return map_; }
 
     private:
         kf::IESKF kf_;

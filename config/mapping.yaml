@@ -1,7 +1,8 @@
 imu_topic: /livox/imu
 lidar_topic: /livox/lidar
 filter_num: 3
-blind_range: 0.5
+range_min: 0.5
+range_max: 30.0
 
 lio_expect_hz: 50
 scan_resolution: 0.1
@@ -14,3 +15,5 @@ nba: 0.0001
 nbg: 0.0001
 r_il: [1, 0, 0, 0, 1, 0, 0, 0, 1]
 p_il: [-0.011, -0.02329, 0.04412]
+
+publish_voxel_map: true

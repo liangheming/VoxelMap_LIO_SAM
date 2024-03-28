@@ -1,6 +1,6 @@
 #include "utils.h"
 
-void livox2pcl(const livox_ros_driver2::CustomMsg::ConstPtr &msg, pcl::PointCloud<pcl::PointXYZINormal>::Ptr out, int filter_num, double blind)
+void livox2pcl(const livox_ros_driver2::CustomMsg::ConstPtr &msg, pcl::PointCloud<pcl::PointXYZINormal>::Ptr out, int filter_num, double range_min, double range_max)
 {
     int point_num = msg->point_num;
     out->clear();
@@ -18,7 +18,8 @@ void livox2pcl(const livox_ros_driver2::CustomMsg::ConstPtr &msg, pcl::PointClou
             p.z = msg->points[i].z;
             p.intensity = msg->points[i].reflectivity;
             p.curvature = msg->points[i].offset_time / float(1000000); // 纳秒->毫秒
-            if ((p.x * p.x + p.y * p.y + p.z * p.z > (blind * blind)))
+            double sq_range = p.x * p.x + p.y * p.y + p.z * p.z;
+            if (sq_range > (range_min * range_min) && sq_range < range_max * range_max)
             {
                 out->push_back(p);
             }
@@ -48,7 +49,7 @@ geometry_msgs::TransformStamped eigen2Transform(const Eigen::Matrix3d &rot, cons
     transform.transform.translation.y = pos(1);
     transform.transform.translation.z = pos(2);
     Eigen::Quaterniond q = Eigen::Quaterniond(rot);
-   
+
     transform.transform.rotation.w = q.w();
     transform.transform.rotation.x = q.x();
     transform.transform.rotation.y = q.y();
@@ -72,4 +73,122 @@ nav_msgs::Odometry eigen2Odometry(const Eigen::Matrix3d &rot, const Eigen::Vecto
     odom.pose.pose.orientation.y = q.y();
     odom.pose.pose.orientation.z = q.z();
     return odom;
+}
+
+void mapJet(double v, double vmin, double vmax, uint8_t &r, uint8_t &g, uint8_t &b)
+{
+    r = 255;
+    g = 255;
+    b = 255;
+
+    if (v < vmin)
+    {
+        v = vmin;
+    }
+
+    if (v > vmax)
+    {
+        v = vmax;
+    }
+
+    double dr, dg, db;
+
+    if (v < 0.1242)
+    {
+        db = 0.504 + ((1. - 0.504) / 0.1242) * v;
+        dg = dr = 0.;
+    }
+    else if (v < 0.3747)
+    {
+        db = 1.;
+        dr = 0.;
+        dg = (v - 0.1242) * (1. / (0.3747 - 0.1242));
+    }
+    else if (v < 0.6253)
+    {
+        db = (0.6253 - v) * (1. / (0.6253 - 0.3747));
+        dg = 1.;
+        dr = (v - 0.3747) * (1. / (0.6253 - 0.3747));
+    }
+    else if (v < 0.8758)
+    {
+        db = 0.;
+        dr = 1.;
+        dg = (0.8758 - v) * (1. / (0.8758 - 0.6253));
+    }
+    else
+    {
+        db = 0.;
+        dg = 0.;
+        dr = 1. - (v - 0.8758) * ((1. - 0.504) / (1. - 0.8758));
+    }
+
+    r = (uint8_t)(255 * dr);
+    g = (uint8_t)(255 * dg);
+    b = (uint8_t)(255 * db);
+}
+
+void calcVectQuation(const Eigen::Vector3d &x_vec, const Eigen::Vector3d &y_vec, const Eigen::Vector3d &z_vec, geometry_msgs::Quaternion &q)
+{
+    Eigen::Matrix3d rot;
+    rot.col(0) = x_vec;
+    rot.col(1) = y_vec;
+    rot.col(2) = z_vec;
+    Eigen::Quaterniond eq(rot);
+    eq.normalize();
+    q.w = eq.w();
+    q.x = eq.x();
+    q.y = eq.y();
+    q.z = eq.z();
+}
+
+visualization_msgs::MarkerArray voxel2MarkerArray(std::shared_ptr<lio::VoxelMap> map, const std::string &frame_id, const double &timestamp, int max_capacity)
+{
+
+    visualization_msgs::MarkerArray voxel_plane;
+    int size = std::min(static_cast<int>(map->cache.size()), max_capacity);
+    assert(size > 0);
+    voxel_plane.markers.reserve(size);
+    int idx = 0;
+    for (auto &key : map->cache)
+    {
+        lio::Plane &p = map->feat_map[key].tree->plane;
+        if (!p.is_valid)
+            continue;
+        double trace = p.plane_cov.block<3, 3>(0, 0).diagonal().sum();
+        if (trace >= 0.25)
+            trace = 0.25;
+        trace = trace * (1.0 / 0.25);
+        trace = pow(trace, 0.2);
+        uint8_t r, g, b;
+        mapJet(trace, 0, 1, r, g, b);
+        Eigen::Vector3d plane_rgb(r / 256.0, g / 256.0, b / 256.0);
+        double alpha = 0.8;
+
+        visualization_msgs::Marker plane;
+        plane.header.frame_id = frame_id;
+        plane.header.stamp = ros::Time().fromSec(timestamp);
+        plane.ns = "plane";
+        plane.id = idx;
+        plane.type = visualization_msgs::Marker::CYLINDER;
+        plane.action = visualization_msgs::Marker::ADD;
+        plane.pose.position.x = p.center[0];
+        plane.pose.position.y = p.center[1];
+        plane.pose.position.z = p.center[2];
+        geometry_msgs::Quaternion q;
+        calcVectQuation(p.x_normal, p.y_normal, p.normal, q);
+        plane.pose.orientation = q;
+        plane.scale.x = 3 * sqrt(p.eigens[2]);
+        plane.scale.y = 3 * sqrt(p.eigens[1]);
+        plane.scale.z = 2 * sqrt(p.eigens[0]);
+        plane.color.a = alpha;
+        plane.color.r = plane_rgb[0];
+        plane.color.g = plane_rgb[1];
+        plane.color.b = plane_rgb[2];
+        voxel_plane.markers.push_back(plane);
+        // plane.lifetime = ros::Duration();
+        idx++;
+        
+    }
+    return voxel_plane;
 }

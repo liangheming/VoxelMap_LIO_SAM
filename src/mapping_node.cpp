@@ -17,7 +17,9 @@ struct NodeParams
     std::string lidar_topic;
     double lio_expect_hz = 50;
     int filter_num = 3;
-    double blind_range = 0.5;
+    double range_min = 0.5;
+    double range_max = 30.0;
+    bool publish_voxel_map = false;
 };
 
 struct NodeGroupData
@@ -40,6 +42,9 @@ public:
         initNodeParams();
         initSubScribers();
         initPublishers();
+        voxel_map_timer_ = nh.createTimer(ros::Duration(5.0), &LioMappingNode::voxelTimerCB, this, false, false);
+        if (params_.publish_voxel_map)
+            voxel_map_timer_.start();
     }
 
     void initNodeParams()
@@ -48,7 +53,10 @@ public:
         nh_.param<std::string>("imu_topic", params_.imu_topic, "/livox/imu");
         nh_.param<double>("lio_expect_hz", params_.lio_expect_hz, 50);
         nh_.param<int>("filter_num", params_.filter_num, 3);
-        nh_.param<double>("blind_range", params_.blind_range, 0.5);
+        nh_.param<double>("range_min", params_.range_min, 0.5);
+        nh_.param<double>("range_max", params_.range_max, 0.5);
+        nh_.param<bool>("publish_voxel_map", params_.publish_voxel_map, false);
+
         lio::LIOParams lio_params;
         nh_.param<double>("scan_resolution", lio_params.scan_resolution, 0.2);
         nh_.param<bool>("gravity_align", lio_params.gravity_align, true);
@@ -79,6 +87,7 @@ public:
         odom_pub_ = nh_.advertise<nav_msgs::Odometry>("slam_odom", 1000);
         body_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("body_cloud", 1000);
         world_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("world_cloud", 1000);
+        voxel_map_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("voxel_map", 1000);
     }
 
     void imuCB(const sensor_msgs::Imu::ConstPtr msg)
@@ -99,7 +108,7 @@ public:
     void lidarCB(const livox_ros_driver2::CustomMsg::ConstPtr msg)
     {
         pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
-        livox2pcl(msg, cloud, params_.filter_num, params_.blind_range);
+        livox2pcl(msg, cloud, params_.filter_num, params_.range_min, params_.range_max);
         std::lock_guard<std::mutex> lock(group_data_.lidar_mutex);
         double timestamp = msg->header.stamp.toSec();
         if (timestamp < group_data_.last_lidar_time)
@@ -109,6 +118,16 @@ public:
         }
         group_data_.last_lidar_time = timestamp;
         group_data_.lidar_buffer.emplace_back(timestamp, cloud);
+    }
+
+    void voxelTimerCB(const ros::TimerEvent &event)
+    {
+        std::shared_ptr<lio::VoxelMap> voxel_map = map_builder_.voxelMap();
+        if (voxel_map->cache.size() < 10)
+            return;
+        if (voxel_map_pub_.getNumSubscribers() < 1)
+            return;
+        voxel_map_pub_.publish(voxel2MarkerArray(voxel_map, "map", ros::Time::now().toSec(), 100000));
     }
 
     void publishBodyCloud(const double &time)
@@ -206,8 +225,9 @@ private:
     ros::Publisher odom_pub_;
     ros::Publisher body_cloud_pub_;
     ros::Publisher world_cloud_pub_;
+    ros::Publisher voxel_map_pub_;
 
-    ros::Timer main_timer_;
+    ros::Timer voxel_map_timer_;
     NodeParams params_;
     NodeGroupData group_data_;
     lio::SyncPackage sync_pack_;
