@@ -1,6 +1,6 @@
 #include "utils.h"
 
-void livox2pcl(const livox_ros_driver2::CustomMsg::ConstPtr &msg, pcl::PointCloud<pcl::PointXYZINormal>::Ptr out, int filter_num, double blind)
+void livox2pcl(const livox_ros_driver2::CustomMsg::ConstPtr &msg, pcl::PointCloud<pcl::PointXYZINormal>::Ptr out, int filter_num, double range_min, double range_max)
 {
     int point_num = msg->point_num;
     out->clear();
@@ -18,7 +18,8 @@ void livox2pcl(const livox_ros_driver2::CustomMsg::ConstPtr &msg, pcl::PointClou
             p.z = msg->points[i].z;
             p.intensity = msg->points[i].reflectivity;
             p.curvature = msg->points[i].offset_time / float(1000000); // 纳秒->毫秒
-            if ((p.x * p.x + p.y * p.y + p.z * p.z > (blind * blind)))
+            double len = p.x * p.x + p.y * p.y + p.z * p.z;
+            if (len > (range_min * range_min) && len < (range_max * range_max))
             {
                 out->push_back(p);
             }
@@ -48,7 +49,7 @@ geometry_msgs::TransformStamped eigen2Transform(const Eigen::Matrix3d &rot, cons
     transform.transform.translation.y = pos(1);
     transform.transform.translation.z = pos(2);
     Eigen::Quaterniond q = Eigen::Quaterniond(rot);
-   
+
     transform.transform.rotation.w = q.w();
     transform.transform.rotation.x = q.x();
     transform.transform.rotation.y = q.y();

@@ -1,7 +1,8 @@
 imu_topic: /livox/imu
 lidar_topic: /livox/lidar
 filter_num: 3
-blind_range: 0.5
+range_min: 0.5
+range_max: 40.0
 
 lio_expect_hz: 50
 scan_resolution: 0.1
