@@ -18,6 +18,9 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>std_msgs</exec_depend>
 
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
   <depend>sensor_msgs</depend>
   <depend>pcl_ros</depend>
   <depend>livox_ros_driver2</depend>

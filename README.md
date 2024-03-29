@@ -63,7 +63,6 @@ rosbag play your_bag.bag
 ## TODO
 - 基于(STD)特征以及关键帧，实现回环模块以及相应的PGO；
 - 添加VOXEL_MAP++的模块，实现voxel合并逻辑；
-- 添加更多实用功能，如地图保存和voxel_map的可视化等；
 
 ## 特别感谢
 1. [FASTLIO2](https://github.com/hku-mars/FAST_LIO)

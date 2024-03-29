@@ -15,5 +15,12 @@ nba: 0.0001
 nbg: 0.0001
 r_il: [1, 0, 0, 0, 1, 0, 0, 0, 1]
 p_il: [-0.011, -0.02329, 0.04412]
+update_size_threshes: [20, 10]
+max_point_thresh: 100
+plane_thresh: 0.01
+voxel_size: 0.5
+ranging_cov: 0.04
+angle_cov: 0.1
 
 publish_voxel_map: true
+save_map: true

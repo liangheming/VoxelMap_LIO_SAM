@@ -25,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   visualization_msgs
+  message_generation
 )
 
 find_package(OpenMP QUIET)
@@ -35,8 +36,14 @@ find_package(Sophus REQUIRED )
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}   ${OpenMP_C_FLAGS}")
 
-
-
+add_service_files(
+  FILES
+  SaveMap.srv
+)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 catkin_package(
 
 )

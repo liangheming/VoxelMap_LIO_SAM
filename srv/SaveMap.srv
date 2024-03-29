@@ -1,0 +1,5 @@
+string path
+float32 resolution
+---
+bool status
+string msg
