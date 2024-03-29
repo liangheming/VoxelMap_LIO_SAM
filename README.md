@@ -65,7 +65,7 @@ rosbag play your_bag.bag
 rosservice call /mapping_node/save_map "path: '/path_to_save/temp_test.pcd'
 resolution: 0.1"
 ```
-*** 切记在roslaunch的时候将config中 save_map 设置为Ture ***
+**切记在roslaunch的时候将config中 save_map 设置为Ture**
 ## TODO
 - 基于(STD)特征以及关键帧，实现回环模块以及相应的PGO；
 - 添加VOXEL_MAP++的模块，实现voxel合并逻辑；
