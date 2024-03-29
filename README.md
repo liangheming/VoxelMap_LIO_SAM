@@ -1,5 +1,5 @@
 # VOXEL_LIO_SAM
-
+![image](https://github.com/liangheming/VoxelMap_LIO_SAM/blob/voxel_map/imgs/sample0.jpg)
 ## 主要工作
 1. 重构[FASTLIO2](https://github.com/hku-mars/FAST_LIO)代码，使用GN代替原有IESKF(理论上等价，但是GN更加易懂)
 2. 重构[VoxelMap](https://github.com/hku-mars/VoxelMap)，并以此作为FASTLIO的地图管理模块
