@@ -146,17 +146,18 @@ public:
             res.status = 0;
             return true;
         }
-
+        pcl::PointCloud<pcl::PointXYZINormal>::Ptr temp(new pcl::PointCloud<pcl::PointXYZINormal>);
+        pcl::copyPointCloud(*cloud_to_save_, *temp);
         if (req.resolution > 0.0)
         {
             pcl::VoxelGrid<pcl::PointXYZINormal> down_sample_filter;
             down_sample_filter.setLeafSize(req.resolution, req.resolution, req.resolution);
-            down_sample_filter.setInputCloud(cloud_to_save_);
-            down_sample_filter.filter(*cloud_to_save_);
+            down_sample_filter.setInputCloud(temp);
+            down_sample_filter.filter(*temp);
         }
 
         pcl::PCDWriter writer;
-        writer.writeBinaryCompressed(req.path, *cloud_to_save_);
+        writer.writeBinaryCompressed(req.path, *temp);
         res.msg = "CONVERT SUCCESS!";
         res.status = 1;
         return true;
