@@ -11,7 +11,8 @@ namespace lio
         data_group_.Q.block<3, 3>(3, 3) = Eigen::Matrix3d::Identity() * params.na;
         data_group_.Q.block<3, 3>(6, 6) = Eigen::Matrix3d::Identity() * params.nbg;
         data_group_.Q.block<3, 3>(9, 9) = Eigen::Matrix3d::Identity() * params.nba;
-        scan_filter_.setLeafSize(params.scan_resolution, params.scan_resolution, params.scan_resolution);
+        if (params.scan_resolution > 0.0)
+            scan_filter_.setLeafSize(params.scan_resolution, params.scan_resolution, params.scan_resolution);
         map_ = std::make_shared<VoxelMap>(params.voxel_size, params.max_layer, params.update_size_threshes, params.max_point_thresh, params.plane_thresh);
 
         kf_.set_share_function(
@@ -58,9 +59,12 @@ namespace lio
         }
         else
         {
+            if (params_.scan_resolution > 0.0)
+            {
+                scan_filter_.setInputCloud(package.cloud);
+                scan_filter_.filter(*package.cloud);
+            }
 
-            scan_filter_.setInputCloud(package.cloud);
-            scan_filter_.filter(*package.cloud);
             undistortCloud(package);
             cloud_lidar = package.cloud;
             int size = cloud_lidar->size();
