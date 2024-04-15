@@ -14,7 +14,7 @@ namespace lio
         if (params.scan_resolution > 0.0)
             scan_filter_.setLeafSize(params.scan_resolution, params.scan_resolution, params.scan_resolution);
         map_ = std::make_shared<VoxelMap>(params.voxel_size, params.max_layer, params.update_size_threshes, params.max_point_thresh, params.plane_thresh);
-
+        cloud_lidar.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
         kf_.set_share_function(
             [this](kf::State &s, kf::SharedState &d)
             { sharedUpdateFunc(s, d); });
@@ -59,14 +59,14 @@ namespace lio
         }
         else
         {
+
+            undistortCloud(package);
             if (params_.scan_resolution > 0.0)
             {
                 scan_filter_.setInputCloud(package.cloud);
-                scan_filter_.filter(*package.cloud);
+                scan_filter_.filter(*cloud_lidar);
             }
-
-            undistortCloud(package);
-            cloud_lidar = package.cloud;
+            // cloud_lidar = package.cloud;
             int size = cloud_lidar->size();
             for (int i = 0; i < size; i++)
             {
